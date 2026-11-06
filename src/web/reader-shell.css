@@ -1,0 +1,18 @@
+body.direct-reader main {
+  grid-template-columns: 1fr;
+}
+body.direct-reader main > aside {
+  display: none;
+}
+body.direct-reader header > div:first-child:after {
+  content: " · PDF 阅读器";
+  font-size: 12px;
+  color: var(--h-muted);
+  margin-left: 12px;
+}
+body.direct-reader header > div:first-child > span {
+  display: none;
+}
+body.direct-reader footer > span:last-child {
+  display: none;
+}

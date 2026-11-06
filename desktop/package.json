@@ -1,0 +1,9 @@
+{
+  "name": "paper-workbench-desktop",
+  "version": "0.3.2",
+  "main": "main.cjs",
+  "description": "本地文献管理、PDF 阅读标注、离线全文检索与写作引用",
+  "author": "Paper Workbench contributors",
+  "license": "AGPL-3.0-only",
+  "private": true
+}

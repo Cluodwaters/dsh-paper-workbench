@@ -1,0 +1,34 @@
+node_modules/
+.cache/
+third_party/
+data/
+output/
+.playwright-cli/
+*.log
+
+# Local libraries, exports, credentials and development sessions
+*.pdf
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.tgz
+*.zip
+*.7z
+*.env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.dsh/
+.agents/
+.codex/
+.aws/
+__pycache__/
+*.py[cod]
+resources/bin/
+
+# One-machine acceptance artifacts and approved cleanup records
+plugins/dsh-paper-workbench/qa/
+plugins/dsh-paper-workbench/tools/cleanup-approved.mjs

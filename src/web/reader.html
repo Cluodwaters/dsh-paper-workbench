@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <script src="./theme-init.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./reader-shell.css" />
+    <link rel="stylesheet" href="./tools/reader-text.css" />
+    <title>本地文献工作台 · PDF 阅读器</title>
+    <link rel="stylesheet" href="./harness.css" />
+  </head>
+  <body>
+    <header>
+      <div><strong>本地文献工作台</strong><span>PDF 阅读器</span></div>
+      <div class="status" id="save-status" role="status" aria-live="polite">
+        正在载入…
+      </div>
+    </header>
+    <main>
+      <aside>
+        <div class="side-title">
+          <strong>文献附件</strong><span id="document-count"></span>
+        </div>
+        <label class="search"
+          ><input
+            type="search"
+            id="search"
+            placeholder="搜索文件名…"
+            aria-label="搜索文献文件名"
+        /></label>
+        <div id="document-list"></div>
+        <p class="safety">
+          原始 PDF 保留。<br />标注写入独立数据库，导出生成新文件。
+        </p>
+      </aside>
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="document-title" id="document-title">选择一篇论文</div>
+          <div class="actions">
+            <button id="page-text-button" disabled>正文 / OCR</button>
+            <button id="save" disabled>保存</button
+            ><button id="retry" hidden>重试保存</button
+            ><button id="export-json" disabled>导出标注 JSON</button
+            ><button id="export-pdf" class="primary" disabled>
+              导出带标注 PDF
+            </button>
+          </div>
+        </div>
+        <div class="harness-ai-tools" data-harness-only hidden>
+          <span>AI 辅助阅读</span>
+          <button type="button" data-ai-action="translate">
+            翻译选文 / 本页
+          </button>
+          <button type="button" data-ai-action="explain">
+            解释选文 / 本页
+          </button>
+          <button type="button" data-ai-action="ask">就此提问</button>
+          <small>点击后将所选内容或本页正文交给 Harness Agent</small>
+        </div>
+        <div class="notice" id="notice" role="status" hidden></div>
+        <div class="reading-area">
+          <div class="placeholder" id="placeholder">
+            <h1>打开论文，继续阅读</h1>
+            <p>
+              从列表选择一份 PDF。高亮、下划线和文字批注由 Zotero Reader 提供。
+            </p>
+            <p>
+              选中文字后可翻译、解释或提问。AI 辅助按需打开，不影响普通阅读。
+            </p>
+          </div>
+          <iframe
+            id="reader-frame"
+            title="PDF 阅读与标注"
+            src="about:blank"
+          ></iframe>
+        </div>
+        <footer>
+          <span id="document-info">本地文献库</span
+          ><span>标注保存在本地，可随 PDF 副本导出</span>
+        </footer>
+      </section>
+    </main>
+    <div id="toast" hidden role="status"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

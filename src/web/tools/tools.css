@@ -1,0 +1,299 @@
+.tools-page {
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+}
+.tools-page .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.tool-tabs {
+  display: flex;
+  gap: 22px;
+}
+.tool-tabs a {
+  color: var(--green);
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 6px;
+}
+.tool-tabs a.active {
+  background: var(--soft);
+  font-weight: 600;
+}
+.offline-label {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tools-main {
+  max-width: 1320px;
+  margin: 38px auto;
+  padding: 0 30px 50px;
+}
+.tools-main h1 {
+  font-size: 29px;
+  margin: 8px 0 10px;
+  letter-spacing: 0.5px;
+}
+.lead {
+  color: var(--h-muted);
+  margin: 0 0 28px;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin: 24px 0;
+}
+.metric {
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.metric b {
+  display: block;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--green);
+  margin-bottom: 8px;
+}
+.metric span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tool-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 22px;
+}
+.tool-card h2 {
+  margin: 0 0 9px;
+  font-size: 17px;
+}
+.tool-card h3 {
+  font-size: 14px;
+  margin-top: 24px;
+}
+.tool-card p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.card-heading p {
+  margin: 5px 0;
+}
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.index-row {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) 170px 230px;
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+.index-row:first-child {
+  margin-top: 16px;
+}
+.index-name {
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.index-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.index-row .button-group {
+  justify-content: flex-end;
+}
+.index-row button,
+.index-row a {
+  font-size: 11px;
+}
+.index-row a {
+  color: var(--green);
+}
+.job-row {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.job-row > div {
+  flex: 1;
+}
+.job-row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.error-text {
+  color: var(--danger) !important;
+}
+.citation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 24px;
+}
+.field-row {
+  display: flex;
+  gap: 18px;
+  margin: 20px 0;
+}
+.field-row label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+}
+.field-row select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 6px;
+}
+.tools-page input[type="search"] {
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.tools-page #cite-search {
+  width: 100%;
+}
+.cite-result {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.cite-result > div {
+  flex: 1;
+}
+.cite-result strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.cite-result small {
+  color: var(--muted);
+}
+#cite-results {
+  max-height: 350px;
+  overflow: auto;
+}
+.chosen-cite {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  margin: 9px 0;
+  background: var(--h-surface);
+}
+.chosen-cite .cite-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.chosen-cite input {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.chosen-cite .locators {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 9px;
+}
+.chosen-cite label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.citation-preview {
+  padding: 15px;
+  background: var(--soft);
+  border-radius: 6px;
+  margin: 15px 0;
+}
+.bibliography-preview {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 13px;
+  max-height: 380px;
+  overflow: auto;
+  margin: 14px 0;
+}
+.warning-box {
+  background: #fff4dd;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #856024;
+}
+.text-viewer {
+  max-height: 60vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.85;
+  background: var(--h-surface);
+  padding: 16px;
+  font-size: 13px;
+}
+.text-view-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+.text-view-toolbar select {
+  padding: 6px;
+}
+.compact p {
+  margin-bottom: 0;
+}
+.connection-status {
+  border-left: 3px solid var(--h-muted);
+  padding-left: 12px;
+}
+@media (max-width: 950px) {
+  .citation-grid {
+    grid-template-columns: 1fr;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .index-row {
+    grid-template-columns: 1fr;
+  }
+  .index-row .button-group {
+    justify-content: flex-start;
+  }
+  .card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .offline-label {
+    display: none;
+  }
+}

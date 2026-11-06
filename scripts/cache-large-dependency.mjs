@@ -1,0 +1,10 @@
+import {writeFile,mkdir} from 'node:fs/promises';import {createHash} from 'node:crypto';import {spawnSync} from 'node:child_process';import path from 'node:path';
+const name=process.argv[2],version=process.argv[3];
+const metadata=await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/${version}`,{signal:AbortSignal.timeout(30000)}).then(r=>r.json());
+const url=metadata.dist.tarball.replace('https://registry.npmjs.org/','https://registry.npmmirror.com/');
+const response=await fetch(url,{signal:AbortSignal.timeout(240000)});if(!response.ok)throw new Error(response.status+' '+url);
+const bytes=Buffer.from(await response.arrayBuffer()),[algorithm,hash]=metadata.dist.integrity.split('-');
+if(createHash(algorithm).update(bytes).digest('base64')!==hash)throw new Error('Official npm integrity mismatch');
+await mkdir('.cache',{recursive:true});const file=path.resolve('.cache',name.replaceAll('/','-')+'-'+version+'.tgz');await writeFile(file,bytes);
+const npmCli=path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');
+const result=spawnSync(process.execPath,[npmCli,'cache','add',file],{encoding:'utf8',windowsHide:true});if(result.status)throw new Error(result.stderr);console.log('Verified official npm integrity and cached',name,version,bytes.length);

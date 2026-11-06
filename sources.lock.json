@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "verifiedOn": "2026-10-30",
+  "runtime": {"node": "25.8.1", "sqlite": "3.52.0", "playwrightCli": "0.1.22"},
+  "components": [
+    {"name":"Zotero Reader","repository":"https://github.com/zotero/reader","commit":"293d7e115fd538b35dd41ffb1dc77bb9a6ff0d39","license":"AGPL-3.0-only","path":"third_party/zotero-reader"},
+    {"name":"Reader PDF.js","repository":"https://github.com/zotero/pdf.js","commit":"5f95f712bc629ac11159cb4859ed8091fdffa87b","license":"Apache-2.0","path":"third_party/zotero-reader/pdfjs/pdf.js"},
+    {"name":"Zotero Document Worker","repository":"https://github.com/zotero/document-worker","commit":"a8bab24c82a41435f125a17a4865951b74518117","license":"AGPL-3.0-only","path":"third_party/zotero-document-worker"},
+    {"name":"Worker PDF.js","repository":"https://github.com/zotero/pdf.js","commit":"f4d05caed86bd38f6ccd2171dbbd5cb832d72912","license":"Apache-2.0","path":"third_party/zotero-document-worker/pdf.js"},
+    {"name":"EPUB.js submodule","repository":"https://github.com/zotero/epub.js","commit":"e68c8b9c868be6ccb5b9684213117e95e52ef880","path":"third_party/zotero-reader/epubjs/epub.js"},
+    {"name":"Structured document text submodule","repository":"https://github.com/zotero/structured-document-text","commit":"7963c11faac4595be3bbe86b7574704a22c67bed","path":"third_party/zotero-reader/structured-document-text"}
+  ],
+  "localeSourceCommit":"a6a919234a360f5cc0f8dbf45b84e1fafc546f41",
+  "buildNotes":[
+    "Reader uses the web target without minification and its pinned PDF.js generic modern-browser build.",
+    "Document export uses the pinned PDFAssembler, writeRawAnnotations and FontEmbedder primitives in a worker thread; no rewriting of PDF serialization or annotation encoding.",
+    "Optional ONNX models and upstream PDF test corpora are not required by this PDF-only validation path and are excluded from the slim source download.",
+    "Application source does not patch upstream source. Platform staging and resource retrieval are kept in scripts/.",
+    "Used slim-tree source files are checked against their Git blob hashes; see output/source-download-results.json."
+  ]
+}

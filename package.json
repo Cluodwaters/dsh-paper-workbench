@@ -1,0 +1,31 @@
+{
+  "name": "personal-paper-workbench",
+  "version": "0.3.2",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=25.8.1"
+  },
+  "scripts": {
+    "start": "node src/server/main.mjs",
+    "import:samples": "node scripts/import-samples.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "validate:exports": "python scripts/verify-exports.py",
+    "desktop": "electron desktop/main.cjs",
+    "build:bridge": "node scripts/build-office-bridge.mjs",
+    "build:desktop": "node scripts/stage-desktop.mjs && electron-builder --projectDir desktop --win nsis --x64 --config builder.cjs",
+    "build:dir": "node scripts/stage-desktop.mjs && electron-builder --projectDir desktop --win dir --x64 --config builder.cjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "1.1.0",
+    "citeproc": "2.4.63",
+    "he": "1.2.0",
+    "tesseract.js": "7.0.0"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.18.0",
+    "prettier": "3.9.10"
+  }
+}

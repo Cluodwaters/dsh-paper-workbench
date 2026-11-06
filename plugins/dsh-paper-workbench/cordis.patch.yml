@@ -1,0 +1,20 @@
+# Bundle patch layer: one Host plugin row. The `dsh.client` declaration in
+# package.json makes the Web app load ./client.js as the browser half.
+#
+# Optional row config (all keys have working defaults):
+#   backendRoot     Absolute path to a Paper Workbench backend checkout or
+#                   packaged backend. Defaults to resources/backend when the
+#                   bundle ships one, else the workspace checkout.
+#   nodeExecutable  Absolute path to a Node >= 25.8.1 executable. Defaults to
+#                   resources/runtime/node.exe (packaged) or a verified runtime
+#                   found under the workspace output/ directories.
+#   dataRoot        Paper Workbench data directory owned by this plugin. Keep it
+#                   separate from the standalone application's data directory.
+#                   Defaults to %LOCALAPPDATA%/dsh-paper-workbench/data.
+#   autoIndex       Start fulltext indexing on boot. Default true.
+#   autoRead        Create a paper conversation and read new imports with the
+#                   current DSH model. Default true; existing papers unchanged.
+#   startupTimeoutMs  Readiness deadline for the local backend. Default 120000.
+- insert:
+    - id: paper-workbench
+      name: dsh-paper-workbench

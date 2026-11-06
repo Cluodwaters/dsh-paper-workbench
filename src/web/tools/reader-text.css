@@ -1,0 +1,48 @@
+dialog.dialog {
+  border: 1px solid var(--h-border);
+  border-radius: 12px;
+  padding: 25px;
+  width: 780px;
+  max-width: 90vw;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--h-ink);
+  background: #fffefa;
+}
+dialog::backdrop {
+  background: #1f302e66;
+}
+.dialog-head,
+.dialog-actions,
+.text-view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.dialog-head h2 {
+  font-size: 19px;
+}
+.dialog-actions {
+  justify-content: flex-end;
+}
+.dialog .text-viewer {
+  max-height: 60vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  background: var(--h-surface);
+  padding: 16px;
+  font-size: 13px;
+}
+.dialog .text-view-toolbar select {
+  padding: 6px;
+}
+.dialog .small {
+  font-size: 12px;
+}
+.dialog .muted {
+  color: var(--h-muted);
+}
+.dialog a {
+  color: var(--h-accent);
+}

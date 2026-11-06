@@ -1,0 +1,224 @@
+/* Shared with the standalone shell; values follow Harness's neutral/blue palette. */
+:root {
+  --h-ink: #0f1115;
+  --h-muted: #737b8a;
+  --h-surface: #ffffff;
+  --h-raised: #f9fafb;
+  --h-soft: #f1f4fa;
+  --h-border: #e1e5ee;
+  --h-accent: #4176e6;
+  --h-hover: #3265d4;
+  --h-selected: #edf3ff;
+  --ink: var(--h-ink);
+  --muted: var(--h-muted);
+  --green: var(--h-accent);
+  --soft: var(--h-selected);
+  --paper: var(--h-surface);
+  --line: var(--h-border);
+  --bg: var(--h-raised);
+  color-scheme: light;
+  color: var(--h-ink);
+  background: var(--h-raised);
+  font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+:root[data-theme="dark"] {
+  --h-ink: #eceef2;
+  --h-muted: #a0a4af;
+  --h-surface: #232324;
+  --h-raised: #151517;
+  --h-soft: #2c2c2e;
+  --h-border: #3a3d44;
+  --h-accent: #7aaaff;
+  --h-hover: #91b7ff;
+  --h-selected: #28364d;
+  color-scheme: dark;
+}
+body {
+  color: var(--h-ink);
+  background: var(--h-raised);
+}
+button,
+input,
+select,
+textarea {
+  color: inherit;
+}
+button,
+input,
+select,
+textarea,
+.app-header,
+.toolbar,
+header {
+  border-color: var(--h-border);
+}
+button,
+input,
+select,
+textarea {
+  background-color: var(--h-surface);
+}
+button.primary,
+.primary {
+  background: var(--h-accent);
+  border-color: var(--h-accent);
+  color: #fff;
+}
+button.primary:hover:not(:disabled),
+.primary:hover:not(:disabled) {
+  background: var(--h-hover);
+}
+button:hover:not(:disabled),
+button.secondary {
+  background: var(--h-selected);
+}
+.status,
+.local-dot {
+  color: var(--h-muted);
+}
+.local-dot {
+  background: var(--h-accent);
+}
+a,
+.brand {
+  color: var(--h-accent);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--h-accent);
+}
+.app-header,
+header {
+  background: var(--h-surface);
+}
+.harness-embedded .app-header {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(0, 580px) minmax(210px, 1fr);
+  height: 60px;
+  padding: 0 18px;
+  gap: 14px;
+}
+.harness-embedded .brand {
+  width: auto;
+  justify-self: start;
+}
+.harness-embedded .search-box {
+  min-width: 0;
+  justify-self: center;
+}
+.harness-embedded .header-actions {
+  justify-self: end;
+  margin-left: 0;
+}
+.harness-embedded .brand strong {
+  display: none;
+}
+.harness-embedded .brand svg {
+  width: 22px;
+  height: 22px;
+}
+.harness-embedded .app-body {
+  height: calc(100vh - 60px);
+}
+.harness-embedded .sidebar {
+  width: 190px;
+}
+.harness-embedded .library-toolbar h1 {
+  font-family: inherit;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+@media (min-width: 1001px) {
+  .harness-embedded .app-body {
+    grid-template-columns: 190px minmax(0, 1fr) 320px;
+  }
+}
+@media (min-width: 701px) and (max-width: 1000px) {
+  .harness-embedded .app-body {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+}
+@media (max-width: 1000px) {
+  .harness-embedded .app-header {
+    grid-template-columns: minmax(112px, 1fr) minmax(0, 580px) minmax(112px, 1fr);
+  }
+  .harness-embedded .details-panel {
+    top: 60px;
+  }
+}
+@media (max-width: 700px) {
+  .harness-embedded .sidebar {
+    top: 60px;
+    width: 245px;
+  }
+}
+@media (max-width: 560px) {
+  .harness-embedded .app-header {
+    height: 104px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 34px 38px;
+    padding: 8px 18px;
+    gap: 8px 14px;
+  }
+  .harness-embedded .header-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .harness-embedded .search-box {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 38px;
+  }
+  .harness-embedded .app-body {
+    height: calc(100vh - 104px);
+  }
+  .harness-embedded .sidebar,
+  .harness-embedded .details-panel {
+    top: 104px;
+  }
+}
+.harness-embedded.direct-reader header {
+  height: 36px;
+  padding: 0 16px;
+}
+.harness-embedded.direct-reader header > div:first-child {
+  display: none;
+}
+.harness-embedded.direct-reader .status {
+  max-width: 100%;
+}
+.harness-embedded.direct-reader main {
+  height: calc(100vh - 36px);
+}
+.harness-ai-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 15px;
+  background: var(--h-surface);
+  border-bottom: 1px solid var(--h-border);
+  font-size: 11px;
+}
+.harness-ai-tools > span {
+  margin-right: 5px;
+  color: var(--h-accent);
+}
+.harness-ai-tools button {
+  padding: 4px 9px;
+  border-radius: 6px;
+}
+.harness-ai-tools small {
+  color: var(--h-muted);
+  margin-left: auto;
+  font-size: 10px;
+}
+@media (max-width: 900px) {
+  .harness-embedded .search-box kbd,
+  .harness-ai-tools small {
+    display: none;
+  }
+}

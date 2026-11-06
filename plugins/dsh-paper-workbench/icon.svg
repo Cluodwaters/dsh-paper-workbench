@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Paper Workbench">
+  <rect width="128" height="128" rx="24" fill="#F5F7FB"/>
+  <path d="M28 34h27c6 0 9 3 9 8v50c-2-4-6-6-11-6H28z" fill="#FFFFFF" stroke="#4176E6" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M100 34H73c-6 0-9 3-9 8v50c2-4 6-6 11-6h25z" fill="#FFFFFF" stroke="#4176E6" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M64 42v50" stroke="#4176E6" stroke-width="4" stroke-linecap="round"/>
+  <path d="M42 52h12M42 63h12M42 74h9M74 52h12M74 63h12" stroke="#9AA6BC" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="94" cy="92" r="16" fill="#4176E6"/>
+  <path d="M94 84v16M86 92h16" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

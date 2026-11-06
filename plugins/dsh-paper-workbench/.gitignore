@@ -1,0 +1,12 @@
+/dist/
+/*.tgz
+/qa/*.log
+/qa/dev-*.patch.yml
+/qa/artifacts/
+/qa/artifacts-package/
+/qa/last-run.json
+/qa/last-url.txt
+/qa/last-pid.txt
+/qa/debug-*.mjs
+/qa/index-*.html
+/qa/runtime/

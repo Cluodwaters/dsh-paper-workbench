@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <script src="./theme-init.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="./library/library.css" />
+    <link rel="stylesheet" href="./tools/tools.css" />
+    <title>文献工作台 · 索引与写作</title>
+    <link rel="stylesheet" href="./harness.css" />
+  </head>
+  <body class="tools-page">
+    <header class="app-header">
+      <a class="brand" href="./">▤ <strong>文献工作台</strong></a>
+      <nav class="tool-tabs">
+        <a href="#index">全文索引与 OCR</a
+        ><a href="#citations">Word / WPS 引用</a>
+      </nav>
+      <span class="offline-label">本地处理 · 无需上传论文</span>
+    </header>
+    <main class="tools-main">
+      <section id="index-panel">
+        <div class="eyebrow">READ & FIND</div>
+        <h1>让整座文献库可检索</h1>
+        <p class="lead">
+          PDF 原生文字自动索引；扫描页可使用本地中英文
+          OCR。搜索结果直接定位回原页。
+        </p>
+        <div class="metric-grid" id="index-metrics"></div>
+        <div class="tool-card">
+          <div class="card-heading">
+            <div>
+              <h2>后台任务</h2>
+              <p id="index-progress" role="status">正在读取任务状态…</p>
+            </div>
+            <div class="button-group">
+              <button id="index-all">重建全库正文索引</button
+              ><button id="ocr-missing">识别全库扫描页</button
+              ><button id="index-pause">暂停任务</button>
+            </div>
+          </div>
+          <div id="index-jobs"></div>
+        </div>
+        <div class="tool-card">
+          <div class="card-heading">
+            <div>
+              <h2>文献正文</h2>
+              <p>
+                OCR 单独保存，不改变 PDF 或已有标注；公式与表格需对照原页核对。
+              </p>
+            </div>
+            <input
+              id="index-filter"
+              type="search"
+              placeholder="查找文件名…"
+              aria-label="查找索引文件"
+            />
+          </div>
+          <div id="index-documents"></div>
+        </div>
+      </section>
+      <section id="citations-panel" hidden>
+        <div class="eyebrow">WRITE & CITE</div>
+        <h1>把文献带入论文</h1>
+        <p class="lead">
+          先在 Word
+          中放好光标，再选择文献并插入。增删引用后刷新，编号与参考文献表会一起更新。
+        </p>
+        <div class="citation-grid">
+          <div class="tool-card">
+            <h2>1. 选择文献</h2>
+            <input
+              id="cite-search"
+              type="search"
+              placeholder="搜索题名、作者、DOI…"
+              aria-label="搜索引用文献"
+            />
+            <div id="cite-results"></div>
+            <h3>本次引用 <span id="cite-count">0</span></h3>
+            <div id="cite-selected"></div>
+          </div>
+          <div class="tool-card">
+            <h2>2. 连接写作软件</h2>
+            <div class="field-row">
+              <label
+                >写作软件<select id="cite-app">
+                  <option value="word">Microsoft Word</option>
+                  <option value="wps">WPS 文字 · 兼容连接</option>
+                </select></label
+              ><label>引用格式<select id="cite-style"></select></label>
+            </div>
+            <p class="connection-status" id="office-status" role="status"></p>
+            <p class="small muted">
+              使用 .docx 正文中的可更新引用域。请在 Word/WPS 中正常保存文档。WPS
+              需提供 COM 和撤销事务接口。
+            </p>
+            <div class="button-group">
+              <button id="cite-insert" class="primary">预览插入引用</button
+              ><button id="cite-bibliography">插入 / 更新文献表</button
+              ><button id="cite-refresh">刷新全文引用</button>
+            </div>
+            <div id="cite-preview" hidden>
+              <h3>3. 检查并写入</h3>
+              <p id="cite-target"></p>
+              <div id="cite-warnings"></div>
+              <div class="citation-preview" id="cite-output"></div>
+              <div class="bibliography-preview" id="bib-output"></div>
+              <button id="cite-apply" class="primary">确认写入当前文档</button>
+            </div>
+            <p id="cite-message" role="status"></p>
+          </div>
+        </div>
+        <div class="tool-card compact">
+          <h2>持续可更新</h2>
+          <p>
+            普通删除会移除引用；重新排列或复制引用后，点击“刷新全文引用”。参考文献表仅包含正文实际引用的文献。每处引用保留必要的书目信息，不包含
+            PDF 正文和阅读批注。
+          </p>
+        </div>
+      </section>
+    </main>
+    <div id="toast" class="toast" hidden role="status"></div>
+    <script type="module" src="./tools/app.js"></script>
+  </body>
+</html>

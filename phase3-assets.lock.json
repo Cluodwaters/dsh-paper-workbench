@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "sources": {
+    "tesseract-ocr/tessdata_fast": "87416418657359cb625c412a48b6e1d6d41c29bd",
+    "citation-style-language/styles": "e98c3b8a5371ad571abcf2192b75dfdd392243f2",
+    "citation-style-language/locales": "8bef426f89f38c0789223c50e53ec2197bc50bb3",
+    "nodejs/node": "2ea7a7b67c3d698a0e80d2591365e2dc5c5f7a81"
+  },
+  "files": [
+    {
+      "target": "ocr/eng.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/eng.traineddata",
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "bytes": 4113088
+    },
+    {
+      "target": "ocr/chi_sim.traineddata",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/chi_sim.traineddata",
+      "sha256": "a5fcb6f0db1e1d6d8522f39db4e848f05984669172e584e8d76b6b3141e1f730",
+      "bytes": 2469156
+    },
+    {
+      "target": "licenses/tessdata-fast.txt",
+      "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "target": "csl/gb-t-7714-2015.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/e98c3b8a5371ad571abcf2192b75dfdd392243f2/china-national-standard-gb-t-7714-2015-numeric.csl",
+      "sha256": "d9cd04f94bc21a99dc320d0a2230d5a1fb47e3634c17c5820cf975c40db3c0c7",
+      "bytes": 15530
+    },
+    {
+      "target": "csl/gb-t-7714-2025.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/e98c3b8a5371ad571abcf2192b75dfdd392243f2/china-national-standard-gb-t-7714-2025-numeric.csl",
+      "sha256": "3b5ab6249ce23b57954c9a4a67e0df422d8759b0573cae7e7de2f2ef94895faf",
+      "bytes": 17228
+    },
+    {
+      "target": "csl/apa.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/e98c3b8a5371ad571abcf2192b75dfdd392243f2/apa.csl",
+      "sha256": "3917def5fc951b104d64216c3373096042368b9704ba269ca83c14ebaba889fc",
+      "bytes": 85817
+    },
+    {
+      "target": "csl/ieee.csl",
+      "url": "https://raw.githubusercontent.com/citation-style-language/styles/e98c3b8a5371ad571abcf2192b75dfdd392243f2/ieee.csl",
+      "sha256": "b4c7619fc16c45a31e4cc3271eab94ffe83192d3b4c7fc729470a3b459448de3",
+      "bytes": 17587
+    },
+    {
+      "target": "csl/locales-en-US.xml",
+      "url": "https://raw.githubusercontent.com/citation-style-language/locales/8bef426f89f38c0789223c50e53ec2197bc50bb3/locales-en-US.xml",
+      "sha256": "ac864c7c21166b4390d82c31792cdc509400727fa0060b43d8aa17e07f9cb079",
+      "bytes": 32649
+    },
+    {
+      "target": "csl/locales-zh-CN.xml",
+      "url": "https://raw.githubusercontent.com/citation-style-language/locales/8bef426f89f38c0789223c50e53ec2197bc50bb3/locales-zh-CN.xml",
+      "sha256": "95cebc667f2da8fb5b9864e49941e3f867d59f79feba929bc58e8ed6bfd4d582",
+      "bytes": 18641
+    },
+    {
+      "target": "licenses/csl-locales.txt",
+      "url": "https://raw.githubusercontent.com/citation-style-language/locales/8bef426f89f38c0789223c50e53ec2197bc50bb3/README.md",
+      "sha256": "f8e1b34d3e1b66f101b45bc45e5fca0397aa923fe4abeab6f98139c8f731c320",
+      "bytes": 1777
+    },
+    {
+      "target": "licenses/node.txt",
+      "url": "https://raw.githubusercontent.com/nodejs/node/2ea7a7b67c3d698a0e80d2591365e2dc5c5f7a81/LICENSE",
+      "sha256": "d94dd7496d4de9cd130f1eb6e661e43422483663fd48cf3a450d244b9cda6fdc",
+      "bytes": 156972
+    }
+  ]
+}

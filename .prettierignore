@@ -1,0 +1,14 @@
+third_party/
+data/
+output/
+.cache/
+# Playwright CLI accepts these as function expressions, not JS statement files.
+scripts/validate-reader-batch.js
+scripts/validate-recovery.js
+scripts/validate-save-failure.js
+scripts/prime-reading-state.js
+scripts/validate-library-ui.js
+scripts/validate-library-safety.js
+scripts/validate-stage2-reader.js
+scripts/validate-draft-isolation.js
+scripts/validate-stage3-report.js
