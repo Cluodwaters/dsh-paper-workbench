@@ -1,4 +1,4 @@
-# 文献工作台 · DeepSeek Harness 插件 0.2.0
+# 文献工作台 · DeepSeek Harness 插件 0.2.1
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
@@ -64,7 +64,7 @@ flowchart LR
 node plugins/dsh-paper-workbench/tools/package.mjs
 cd plugins/dsh-paper-workbench/dist
 npm pack --pack-destination .. --ignore-scripts
-dsh plugin --profile desktop add <dsh-paper-workbench-0.2.0.tgz 的绝对路径>
+dsh plugin --profile desktop add <dsh-paper-workbench-0.2.1.tgz 的绝对路径>
 ```
 
 `dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。通过官方插件管理安装后，从 DSH「应用 → 退出」完整退出再打开以加载新版本；关闭窗口可能仅隐藏到托盘。卸载插件不删除资料库。

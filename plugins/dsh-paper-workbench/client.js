@@ -314,8 +314,9 @@ window.__ModuleLoader__.load({
 .pw-dot { width:7px; height:7px; border-radius:50%; background:var(--dsw-alias-state-idle-primary); flex:0 0 auto; }
 .pw-button { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-base); color:var(--dsw-alias-label-primary); border-radius:8px; padding:5px 10px; font-size:12.5px; cursor:pointer; white-space:nowrap; }
 .pw-button:hover:not(:disabled) { background:var(--dsw-alias-bg-layer-2); border-color:var(--dsw-alias-border-l2); }
-.pw-button[data-variant="primary"] { background:var(--dsw-alias-brand-primary); border-color:var(--dsw-alias-brand-primary); color:#fff; }
-.pw-button[data-variant="primary"]:hover:not(:disabled) { filter:brightness(1.06); background:var(--dsw-alias-brand-primary); }
+/* Primary fill becomes light in DSH dark mode; keep its paired foreground. */
+.pw-button[data-variant="primary"] { background:var(--dsw-alias-button-primary-fill); border-color:var(--dsw-alias-button-primary-fill); color:var(--dsw-alias-label-primary-foreground); }
+.pw-button[data-variant="primary"]:hover:not(:disabled) { background:var(--dsw-alias-button-primary-hover); border-color:var(--dsw-alias-button-primary-hover); }
 .pw-button[data-variant="quiet"] { border-color:transparent; background:transparent; color:var(--dsw-alias-label-secondary); }
 .pw-button:disabled { opacity:.5; cursor:default; }
 .pw-body { display:flex; flex:1; min-height:0; min-width:0; }
