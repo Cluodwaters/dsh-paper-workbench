@@ -132,8 +132,10 @@ const startOutput = execFileSync(
     '--data-root',
     dataRoot,
     '--no-auto-read',
+    '--unlock-llm',
   ],
-  { encoding: 'utf8' },
+  // Exercise composer admission in a clean profile without borrowing credentials.
+  { encoding: 'utf8', env: { ...process.env, DEEPSEEK_API_KEY: 'sk-isolated-qa-invalid' } },
 )
 const startLine = startOutput
   .trim()

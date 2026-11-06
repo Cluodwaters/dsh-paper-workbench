@@ -13,6 +13,7 @@ const output = {
   render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }],
 };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const PAPER_PRESET = "paper-workbench";
 
 export function createAgentCoordinator(
   ctx,
@@ -260,7 +261,7 @@ export function createAgentCoordinator(
       ),
       definition(
         "paper_checkpoint",
-        "阅读当前段后保存简短笔记与滚动工作记忆。本轮结束，调度器会自动继续下一段。",
+        "阅读当前段后保存简短笔记与滚动工作记忆。保存后继续 paper_read_next，直到读完并发布摘要；不要等待新的用户指令。",
         {
           receipt: str("paper_read_next 返回的读取凭据"),
           note: str("当前段笔记，最多 800 字符"),
@@ -275,7 +276,6 @@ export function createAgentCoordinator(
               id: j.id,
               token: j.lease_token,
             });
-          exec.concludeTurn?.();
           return result;
         },
       ),
@@ -311,7 +311,6 @@ export function createAgentCoordinator(
           });
           state.version = result.version;
           state.summarized = true;
-          exec.concludeTurn?.();
           return {
             saved: true,
             version: result.version,
@@ -447,20 +446,35 @@ export function createAgentCoordinator(
       }
       const defaults = service("agentDefaultModel")?.currentSelection?.();
       const agentOptions = { ...(defaults || {}), maxTokens: 6000 };
+      const presets = service("agentPresets");
+      const setup = async (scope, agent) => {
+        if (presets) {
+          await presets.mount(scope, PAPER_PRESET);
+          // Migrate pre-0.2.2 sessions without changing their identity or log.
+          if (presets.presetForSession(agent.session) !== PAPER_PRESET)
+            agent.session.append("agent-preset/selected", {
+              agentPreset: PAPER_PRESET,
+            });
+        }
+        await attach(agent);
+      };
       let handle;
       try {
         handle = await agents.resume({
           resumeSessionId: binding.session_id,
           agentOptions,
-          setup: (_scope, a) => attach(a),
+          setup,
         });
       } catch (error) {
         if (error.name !== "SessionPersistenceNotFoundError") throw error;
         handle = await agents.create({
           sessionId: binding.session_id,
           agentOptions,
-          meta: { cwd: conversationsRoot },
-          setup: (_scope, a) => attach(a),
+          meta: {
+            cwd: conversationsRoot,
+            ...(presets ? { agentPreset: PAPER_PRESET } : {}),
+          },
+          setup,
         });
       }
       handles.set(binding.session_id, { handle, touched: Date.now() });
@@ -525,13 +539,19 @@ export function createAgentCoordinator(
           seq: agent.session.seq,
         });
     }
-    const meter = agent.ctx.get("tokenMeter"),
-      compaction = agent.ctx.get("compaction");
+    const run = [...active.values()].find((r) => r.job.session_id === agent.id);
+    if (run && Date.now() - run.started > 30 * 60 * 1000)
+      throw Error("本次任务达到运行预算，已保存检查点，可点击重试继续。");
+    // Preset services are isolated: ordinary agent.ctx.get cannot see them.
+    const presetService = (name) =>
+      service("agentPresets")?.serviceFor(agent, name) || agent.ctx.get(name);
+    const meter = presetService("tokenMeter"),
+      compaction = presetService("compaction");
     const cap = bindings.get(agent.id).role === "master" ? 24000 : 48000;
     if (meter && meter.measure(agent.session).totalTokens > cap) {
-      if (!compaction)
+      if (typeof compaction?.compactIfNeeded !== "function")
         throw Error(
-          "上下文达到文献会话预算，但 DSH 压缩服务不可用。请启用原生压缩后继续。",
+          "文献会话压缩服务未就绪。已保存进度，请重新打开 DSH 后重试。",
         );
       await compaction.compactIfNeeded(agent, "context-overflow", signal);
       if (meter.measure(agent.session).totalTokens > cap)
@@ -540,7 +560,7 @@ export function createAgentCoordinator(
     return decision;
   }
   async function run(job) {
-    const runState = { job, agent: null };
+    const runState = { job, agent: null, started: Date.now() };
     active.set(job.id, runState);
     const heartbeat = setInterval(
       () =>
@@ -560,20 +580,23 @@ export function createAgentCoordinator(
         (await call("binding-session", { sessionId: job.session_id }));
       const agent = await open(binding);
       runState.agent = agent;
-      let stalled = 0,
-        previous = "",
+      let previous = null,
         turns = 0;
       const started = Date.now();
       while (!stopped) {
+        // Wait for the whole native turn, including its final answer and flush.
+        // Re-read durable state afterwards: it may have completed or been stopped.
+        if (agent.status === "running") await agent.whenIdle();
+        if (stopped) break;
         const current = await call("job", { id: job.id });
         if (current.state !== "running") break;
-        if (Date.now() - started > 30 * 60 * 1000 || turns > 400)
+        if (Date.now() - started > 30 * 60 * 1000 || turns >= 3)
           throw Error("本次初读达到运行预算，已保存检查点，可点击重试继续。");
-        if (agent.status === "running") await agent.whenIdle();
-        const progress = JSON.stringify(current.progress);
-        if (progress === previous) stalled++;
-        else stalled = 0;
-        if (stalled > 2)
+        const progress = JSON.stringify([
+          current.progress.pageIndex || 0,
+          current.progress.offset || 0,
+        ]);
+        if (progress === previous)
           throw Error("Agent 未提交读取进度，已暂停，点击重试继续。");
         previous = progress;
         const state = sessionState.get(agent);
@@ -593,11 +616,11 @@ export function createAgentCoordinator(
               type: "text",
               text:
                 turns === 0
-                  ? `【${current.kind === "initial" ? "导入后自动初读" : "主助手委派任务"}】\n${current.instruction}`
+                  ? `【${current.kind === "initial" ? "导入后自动初读" : "主助手委派任务"}】\n${current.instruction}\n保存 checkpoint 后继续读取，不要结束回答或等待新指令。发布摘要成功后，用简短文字告知阅读结果。${current.progress.pageIndex || current.progress.offset ? `\n从已保存检查点继续；已完成 ${current.progress.pageIndex || 0} 页。工作记忆：${current.progress.memory || "暂无"}` : ""}`
                   : continuation,
             },
           ],
-          source: { kind: "user" },
+          source: { kind: "paper-task", form: "notice" },
         });
         await service("sessions").flush(agent.session);
         await agent.whenIdle();

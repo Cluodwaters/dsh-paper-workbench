@@ -67,6 +67,13 @@ export class AgentRepository {
   scope(role, attachmentId) {
     requireValue(["paper", "master"].includes(role), "ROLE", "无效会话角色。");
     if (role === "paper") {
+      requireValue(
+        typeof attachmentId === "string" &&
+          attachmentId.length > 0 &&
+          attachmentId.length <= 200,
+        "ATTACHMENT_ID",
+        "请先打开一篇论文，再选择论文会话。",
+      );
       const a = this.store.attachment(attachmentId);
       requireValue(
         !this.store.library.get(a.itemId).archivedAt,

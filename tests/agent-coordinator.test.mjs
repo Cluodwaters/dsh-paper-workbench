@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createAgentCoordinator } from "../plugins/dsh-paper-workbench/agents.js";
 
-function fixture({ role = "paper", abort = false, wait = false } = {}) {
+function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
   const binding = {
     session_id: "fixture-session",
     role,
@@ -83,6 +83,7 @@ function fixture({ role = "paper", abort = false, wait = false } = {}) {
         },
         async whenIdle() {
           if (wait) await idle;
+          else if (onIdle) await onIdle({ job, agent, listeners });
           else if (abort)
             listeners.get("session/event")(agent.session, {
               type: "turn/end",
@@ -129,6 +130,8 @@ function fixture({ role = "paper", abort = false, wait = false } = {}) {
     definitions,
     restrictions,
     guards,
+    services,
+    releaseIdle: () => releaseIdle?.(),
     get agent() {
       return agent;
     },
@@ -166,6 +169,108 @@ test("native Stop cancels an automatic job without submitting another instructio
     f.actions.find((a) => a.action === "stop").body.error,
     /用户停止/,
   );
+});
+
+test("checkpoints and publication preserve the native turn until the final answer finishes", async (t) => {
+  const f = fixture({ wait: true });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.messages.length === 1);
+  const exec = {
+    concludeTurn() {
+      assert.fail("tool must not interrupt the native answer");
+    },
+  };
+  const checkpoint = f.definitions.find((d) => d.name === "paper_checkpoint");
+  await checkpoint.execute(
+    { receipt: "page-1", note: "one", memory: "one" },
+    exec,
+  );
+  await checkpoint.execute(
+    { receipt: "page-2", note: "two", memory: "one and two" },
+    exec,
+  );
+  await f.definitions
+    .find((d) => d.name === "paper_publish_digest")
+    .execute({ digest: {} }, exec);
+  assert.equal(f.agent.status, "running");
+  assert.equal(f.messages.length, 1);
+  f.job.state = "completed";
+  f.releaseIdle();
+  await until(() => f.agent.status === "idle");
+  assert.equal(f.messages.length, 1);
+});
+
+test("native failure stops the task immediately, without automated followups", async (t) => {
+  const f = fixture({
+    onIdle({ listeners }) {
+      listeners.get("agent/error")({ error: Error("provider unavailable") });
+    },
+  });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.job.state === "failed");
+  assert.equal(f.messages.length, 1);
+  assert.match(
+    f.actions.find((a) => a.action === "stop").body.error,
+    /provider unavailable/,
+  );
+});
+
+test("incomplete turns get bounded recovery only after the previous native turn is idle", async (t) => {
+  let completedTurns = 0;
+  const f = fixture({
+    onIdle({ job, agent }) {
+      assert.equal(agent.status, "running");
+      job.progress = { pageIndex: ++completedTurns };
+    },
+  });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.job.state === "failed");
+  assert.equal(f.messages.length, 3);
+  assert.equal(completedTurns, 3);
+  assert.match(f.actions.find((a) => a.action === "stop").body.error, /预算/);
+});
+
+test("paper preset is persisted and isolated native compaction is resolved through the registry", async (t) => {
+  const f = fixture();
+  t.after(() => f.coordinator.stop());
+  let mounted,
+    tokens = 49000,
+    compacted = 0;
+  f.services.agentPresets = {
+    async mount(scope, id) {
+      mounted = { scope, id };
+    },
+    presetForSession(session) {
+      return session.header.agentPreset;
+    },
+    serviceFor(agent, name) {
+      assert.equal(agent.ctx, mounted.scope);
+      if (name === "tokenMeter")
+        return { measure: () => ({ totalTokens: tokens }) };
+      if (name === "compaction")
+        return {
+          async compactIfNeeded() {
+            compacted++;
+            tokens = 8000;
+          },
+        };
+    },
+  };
+  await f.coordinator.ensure({ role: "paper", attachmentId: "fixture-paper" });
+  assert.equal(mounted.id, "paper-workbench");
+  assert.equal(f.agent.session.header.agentPreset, "paper-workbench");
+  assert.equal(
+    f.agent.ctx.get("compaction"),
+    undefined,
+    "DSH hides services inside preset groups",
+  );
+  await f.coordinator.beforeStep(f.agent, 2, new AbortController().signal, {
+    kind: "enter",
+  });
+  assert.equal(compacted, 1);
 });
 test("shutdown requeues active work and keeps checkpoints for restart", async () => {
   const f = fixture({ wait: true });

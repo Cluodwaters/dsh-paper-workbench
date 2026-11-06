@@ -11,23 +11,21 @@ export class PaperAgentService {
   status() {
     return {
       autoRead: this.store.autoRead,
-      jobs: this.repository
-        .list()
-        .map((j) => ({
-          id: j.id,
-          attachmentId: j.attachment_id,
-          sessionId: j.session_id,
-          kind: j.kind,
-          state: j.state,
-          pageIndex: j.progress.pageIndex || 0,
-          pageCount: this.store.attachment(j.attachment_id).pages,
-          title: this.store.library.get(
-            this.store.attachment(j.attachment_id).itemId,
-          ).metadata.title,
-          error: j.error,
-          updatedAt: j.updated_at,
-          summaryVersion: j.result?.version || null,
-        })),
+      jobs: this.repository.list().map((j) => ({
+        id: j.id,
+        attachmentId: j.attachment_id,
+        sessionId: j.session_id,
+        kind: j.kind,
+        state: j.state,
+        pageIndex: j.progress.pageIndex || 0,
+        pageCount: this.store.attachment(j.attachment_id).pages,
+        title: this.store.library.get(
+          this.store.attachment(j.attachment_id).itemId,
+        ).metadata.title,
+        error: j.error,
+        updatedAt: j.updated_at,
+        summaryVersion: j.result?.version || null,
+      })),
     };
   }
   prepare(id) {
@@ -165,6 +163,36 @@ export class PaperAgentService {
     return result;
   }
   async handle(action, input = {}) {
+    requireValue(
+      input && typeof input === "object" && !Array.isArray(input),
+      "AGENT_INPUT",
+      "操作参数必须是对象。",
+    );
+    const idField = {
+      job: "id",
+      prepare: "id",
+      claim: "id",
+      heartbeat: "id",
+      stop: "id",
+      next: "id",
+      checkpoint: "id",
+      identify: "id",
+      publish: "id",
+      "task-digest": "id",
+      attachment: "attachmentId",
+      digest: "attachmentId",
+      enqueue: "attachmentId",
+      item: "itemId",
+      "mark-turn": "sessionId",
+    }[action];
+    if (idField)
+      requireValue(
+        typeof input[idField] === "string" &&
+          input[idField].trim().length > 0 &&
+          input[idField].length <= 200,
+        "AGENT_ID",
+        "缺少或无效的文献、会话或任务标识。",
+      );
     const r = this.repository;
     switch (action) {
       case "bindings":

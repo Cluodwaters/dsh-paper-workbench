@@ -750,7 +750,7 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator) {
     const agentRoute=pathname.match(/^\/paper-workbench\/__workbench\/agents\/([a-z-]+)$/)
     if(agentRoute && request.method==='POST') {
       try { return sendJson(response,200,await coordinator.route(agentRoute[1],await readJsonBody(request))) }
-      catch(error){return sendJson(response,409,{error:{code:'AGENT_OPERATION',message:error.message}})}
+      catch(error){return sendJson(response,error.status || 409,{error:{code:error.code || 'AGENT_OPERATION',message:error.message}})}
     }
     if (pathname === `${BASE_PATH}/__workbench/status` && request.method === 'GET') {
       return sendJson(response, 200, statusPayload())
@@ -834,7 +834,7 @@ function createBackendClient(supervisor) {
     if (!response.ok) {
       const message = data && data.error && data.error.message ? data.error.message : `本地文献服务返回 ${response.status}`
       const code = data && data.error && data.error.code ? data.error.code : 'PAPER_WORKBENCH_ERROR'
-      throw new PaperToolError(code, message)
+      throw new PaperToolError(code, message, response.status)
     }
     return data
   }
@@ -858,10 +858,11 @@ function createBackendClient(supervisor) {
 }
 
 class PaperToolError extends Error {
-  constructor(code, message) {
+  constructor(code, message, status = 409) {
     super(message)
     this.name = 'PaperToolError'
     this.code = code
+    this.status = status
   }
 }
 

@@ -67,6 +67,31 @@ const digest = {
   openQuestions: "待人工核验",
   evidencePages: [0],
 };
+
+test("missing or malformed agent IDs are rejected before binding SQLite parameters", async (t) => {
+  const { service } = setup(t);
+  for (const action of ["bind", "topics", "topic"])
+    for (const attachmentId of [undefined, null, {}, [], 3, ""])
+      await assert.rejects(
+        service.handle(action, { role: "paper", attachmentId }),
+        (e) => e.code === "ATTACHMENT_ID" && e.status === 400,
+      );
+  for (const [action, field] of [
+    ["job", "id"],
+    ["digest", "attachmentId"],
+    ["item", "itemId"],
+    ["mark-turn", "sessionId"],
+  ])
+    for (const value of [undefined, null, {}, [], 3, ""])
+      await assert.rejects(
+        service.handle(action, { [field]: value }),
+        (e) => e.code === "AGENT_ID" && e.status === 400,
+      );
+  const master = await service.handle("bind", { role: "master" });
+  const topics = await service.handle("topics", { role: "master" });
+  assert.equal(topics.current, master.session_id);
+  assert.equal(topics.items.length, 1);
+});
 async function readAll(s, j) {
   let c;
   while (!(c = await s.next(j.id, j.lease_token)).done)

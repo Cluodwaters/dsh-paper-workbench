@@ -1,8 +1,9 @@
 # 文献工作台 · DeepSeek Harness 插件
 
-在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.1**，已验证平台为 **Windows x64 + DSH 0.2.2-rc.1**。
+在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.2**，已验证平台为 **Windows x64 + DSH 0.2.2-rc.1**。
 
 - 独立「文献工作台」入口，沿用 DSH 主题，提供文献库、PDF 阅读器和工具页。
+- 拖动 AI 侧栏左边的分隔线调整宽度，自动记住上次的设置；双击恢复默认，方向键可微调。
 - 文献库助手按需检索标题、作者、期刊、年份、标签和已保存摘要；不直接读取论文全文或完整论文对话。
 - 每篇论文有独立 DSH 对话。导入后默认自动初读，识别基础信息，保存主题、科学问题、方法、行文逻辑、发现、局限和待核查问题。
 - 主助手可以委派单篇论文任务。委派会话与用户阅读会话分开，共享带版本与来源的论文摘要。
@@ -12,11 +13,11 @@
 ## 在其他设备安装
 
 1. 在 Windows x64 设备安装兼容的 DSH，并配置好需要使用的模型账号。
-2. 登录有权限的 GitHub 账号，进入 [Releases 下载页](https://github.com/Cluodwaters/dsh-paper-workbench/releases)，下载 `dsh-paper-workbench-0.2.1.tgz`。GitHub 自动生成的 Source code 压缩包用于开发，不能直接作为插件安装。
+2. 登录有权限的 GitHub 账号，进入 [Releases 下载页](https://github.com/Cluodwaters/dsh-paper-workbench/releases)，下载 `dsh-paper-workbench-0.2.2.tgz`。GitHub 自动生成的 Source code 压缩包用于开发，不能直接作为插件安装。
 3. 在 PowerShell 中运行，将路径替换为下载文件的绝对路径：
 
    ```powershell
-   dsh plugin --profile desktop add "C:\Downloads\dsh-paper-workbench-0.2.1.tgz"
+   dsh plugin --profile desktop add "C:\Downloads\dsh-paper-workbench-0.2.2.tgz"
    ```
 
    如果 `dsh` 未加入 PATH，使用 DSH 安装目录内的 `resources/runtime/cli/bin/dsh.cmd`：

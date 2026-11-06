@@ -18,6 +18,7 @@ window.__ModuleLoader__.load({
     const WORKSPACE_STORE = 'dsh.paper-workbench.workspace.v1'
     const VIEW_STORE = 'dsh.paper-workbench.view.v1'
     const AI_OPEN_STORE = 'dsh.paper-workbench.ai-open.v1'
+    const AI_WIDTH_STORE = 'dsh.paper-workbench.ai-width.v1'
     const PENDING_FLUSH_STORE = 'dsh.paper-workbench.pending-flush.v1'
     const LABEL_FALLBACK = '文献工作台'
 
@@ -215,6 +216,14 @@ window.__ModuleLoader__.load({
       }
     }
 
+    function readAiWidth() {
+      try {
+        const value = Number(localStorage.getItem(AI_WIDTH_STORE))
+        if (Number.isFinite(value) && value >= 300 && value <= 900) return value
+      } catch { /* storage is optional */ }
+      return 380
+    }
+
     function markPendingFlush() {
       try {
         sessionStorage.setItem(PENDING_FLUSH_STORE, String(Date.now()))
@@ -333,7 +342,14 @@ window.__ModuleLoader__.load({
 .pw-diag-row { display:flex; gap:8px; align-items:baseline; word-break:break-all; }
 .pw-diag-label { color:var(--dsw-alias-label-secondary); flex:0 0 auto; min-width:64px; }
 .pw-logs { max-height:180px; overflow:auto; margin:4px 0 0; padding:8px 10px; background:var(--dsw-alias-bg-base); border-radius:8px; border:1px solid var(--dsw-alias-border-l1); white-space:pre-wrap; color:var(--dsw-alias-label-secondary); }
-.pw-panel { display:flex; flex-direction:column; min-height:0; flex:0 0 380px; width:380px; border-left:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-1); }
+.pw-panel { display:flex; flex-direction:column; min-height:0; min-width:0; flex:0 0 var(--pw-panel-width,380px); width:var(--pw-panel-width,380px); border-left:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-1); }
+.pw-resizer { flex:0 0 6px; cursor:col-resize; touch-action:none; background:var(--dsw-alias-bg-base); outline-offset:-2px; }
+.pw-resizer:hover, .pw-resizer:focus-visible, .pw-resizer[data-dragging="true"] { background:var(--dsw-alias-brand-primary); }
+.pw-resize-cover { position:fixed; inset:0; z-index:10000; cursor:col-resize; user-select:none; }
+.pw-body[data-stacked="true"] { flex-direction:column; }
+.pw-body[data-stacked="true"] .pw-panel { flex:0 0 55%; width:100%; border-left:0; border-top:1px solid var(--dsw-alias-border-l1); }
+.pw-body[data-stacked="true"] .pw-frame-area { flex:1 1 45%; }
+.pw-body[data-stacked="true"] .pw-resizer { display:none; }
 .pw-panel[data-collapsed="true"] { display:none; }
 .pw-panel-head { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-bottom:1px solid var(--dsw-alias-border-l1); flex:0 0 auto; }
 .pw-panel-title-row { display:flex; align-items:center; gap:8px; }
@@ -355,14 +371,6 @@ window.__ModuleLoader__.load({
 .pw-locate { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .pw-locate .pw-input { max-width:76px; }
 .pw-footer-note { padding:6px 12px; color:var(--dsw-alias-label-secondary); font-size:11px; border-top:1px solid var(--dsw-alias-border-l1); }
-@media (max-width: 1080px) {
-  .pw-panel { flex-basis: 340px; width: 340px; }
-}
-@media (max-width: 860px) {
-  .pw-body { flex-direction: column; }
-  .pw-panel { flex: 0 0 55%; width: 100%; border-left:0; border-top:1px solid var(--dsw-alias-border-l1); }
-  .pw-frame-area { flex:1 1 45%; }
-}
 `
     }
 
@@ -458,6 +466,37 @@ window.__ModuleLoader__.load({
         const [frameSrc, setFrameSrc] = useState('')
         const [view, setView] = useState(() => (readViewStore() || { view: 'library' }).view)
         const [aiOpen, setAiOpen] = useState(() => readAiOpen())
+        const [aiWidth, setAiWidth] = useState(readAiWidth)
+        const [bodyWidth, setBodyWidth] = useState(0)
+        const [resizing, setResizing] = useState(false)
+        const bodyRef = useRef(null)
+        const resizeRef = useRef(null)
+        const stacked = bodyWidth > 0 && bodyWidth < 760
+        const maxAiWidth = Math.max(300, Math.min(900, bodyWidth - 326))
+        const panelWidth = Math.min(aiWidth, bodyWidth ? maxAiWidth : 900)
+        const setPanelWidth = (value) => setAiWidth(Math.round(Math.max(300, Math.min(maxAiWidth, value))))
+        useEffect(() => {
+          const element = bodyRef.current
+          if (!element) return
+          const observer = new ResizeObserver(() => setBodyWidth(element.clientWidth))
+          observer.observe(element)
+          setBodyWidth(element.clientWidth)
+          return () => observer.disconnect()
+        }, [])
+        useEffect(() => {
+          try { localStorage.setItem(AI_WIDTH_STORE, String(aiWidth)) } catch { /* optional */ }
+        }, [aiWidth])
+        useEffect(() => {
+          if (!aiOpen || stacked) { resizeRef.current = null; setResizing(false) }
+        }, [aiOpen, stacked])
+        const finishResize = (event, cancel = false) => {
+          const drag = resizeRef.current
+          if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.pointerId)) return
+          if (cancel) setAiWidth(drag.preferred)
+          resizeRef.current = null
+          setResizing(false)
+          if (event.currentTarget.hasPointerCapture?.(drag.pointerId)) event.currentTarget.releasePointerCapture(drag.pointerId)
+        }
         const [aiScope,setAiScope] = useState(() => (readViewStore()?.view==='reader'?'paper':'master'))
         const [agentJobs,setAgentJobs] = useState([])
         const [jobsOpen,setJobsOpen] = useState(false)
@@ -1205,15 +1244,19 @@ window.__ModuleLoader__.load({
         }
         useEffect(()=>{
           if(!aiOpen || !session?.sessionId)return
+          const key=aiScope==='master'?'__master__':paper?.attachmentId
+          if(!key || session.key!==key){setTopics([]);setSummaryPending(false);return}
           let stopped=false
           const id=session.sessionId, scope={role:aiScope,attachmentId:paper?.attachmentId}
-          void taskAction('topics',scope).then(r=>{if(!stopped)setTopics(r.items||[])}).catch(e=>showNotice(e.message))
+          setTopics([])
+          void taskAction('topics',scope).then(r=>{if(!stopped)setTopics(r.items||[])}).catch(e=>{if(!stopped)showNotice(e.message)})
           const check=()=>taskAction('summary-state',{sessionId:id}).then(r=>{if(!stopped)setSummaryPending(r.pending)}).catch(()=>{})
           void check();const timer=setInterval(check,2500)
           return ()=>{stopped=true;clearInterval(timer)}
         },[aiOpen,session?.sessionId,aiScope,paper?.attachmentId])
         const switchTopic=async(sessionId)=>{
-          if(sessionBusy)return
+          const key=aiScope==='master'?'__master__':paper?.attachmentId
+          if(sessionBusy || !key || sessionRef.current?.key!==key)return
           setSessionBusy(true)
           try{
             const scope={role:aiScope,attachmentId:paper?.attachmentId}
@@ -1416,7 +1459,7 @@ window.__ModuleLoader__.load({
           ):null,
           h(
             'div',
-            { className: 'pw-body' },
+            { className: 'pw-body', ref: bodyRef, 'data-stacked': String(stacked), style: { '--pw-panel-width': `${panelWidth}px` } },
             h(
               'div',
               { className: 'pw-frame-area' },
@@ -1496,9 +1539,38 @@ window.__ModuleLoader__.load({
                   )
                 : null,
             ),
+            aiOpen && !stacked ? h('div', {
+              className: 'pw-resizer', role: 'separator', tabIndex: 0,
+              'aria-label': '调整 AI 侧栏宽度', 'aria-orientation': 'vertical',
+              'aria-valuemin': 300, 'aria-valuemax': maxAiWidth, 'aria-valuenow': panelWidth,
+              'aria-controls': 'pw-ai-panel', 'data-dragging': String(resizing),
+              title: '拖动调整宽度；方向键微调；双击恢复默认',
+              onPointerDown: (event) => {
+                if (event.button !== 0) return
+                event.preventDefault()
+                event.currentTarget.focus()
+                event.currentTarget.setPointerCapture(event.pointerId)
+                resizeRef.current = { pointerId: event.pointerId, x: event.clientX, width: panelWidth, preferred: aiWidth }
+                setResizing(true)
+              },
+              onPointerMove: (event) => {
+                const drag = resizeRef.current
+                if (drag && event.pointerId === drag.pointerId) setPanelWidth(drag.width + drag.x - event.clientX)
+              },
+              onPointerUp: (event) => finishResize(event),
+              onPointerCancel: (event) => finishResize(event, true),
+              onLostPointerCapture: (event) => finishResize(event),
+              onDoubleClick: () => setPanelWidth(380),
+              onKeyDown: (event) => {
+                if (event.key === 'Escape' && resizeRef.current) { event.preventDefault(); finishResize(event, true); return }
+                const next = { ArrowLeft: panelWidth + (event.shiftKey ? 50 : 10), ArrowRight: panelWidth - (event.shiftKey ? 50 : 10), Home: 300, End: maxAiWidth }[event.key]
+                if (next !== undefined) { event.preventDefault(); setPanelWidth(next) }
+              },
+            }) : null,
+            resizing ? h('div', { className: 'pw-resize-cover', 'aria-hidden': true }) : null,
             h(
               'aside',
-              { className: 'pw-panel', 'data-collapsed': String(!aiOpen), 'aria-label': t('ai.title') },
+              { id: 'pw-ai-panel', className: 'pw-panel', 'data-collapsed': String(!aiOpen), 'aria-label': t('ai.title') },
               h(
                 'div',
                 { className: 'pw-panel-head' },
