@@ -93,7 +93,17 @@ node plugins/dsh-paper-workbench/tools/verify-package.mjs --fixture "<合成测�
 1. 功能变化时修改插件版本和版本记录；保留源码与二进制所用上游版本、许可证及构建材料。只纠正下载入口、说明或市场展示时，可保留原版本及已验证的安装包哈希。
 2. 运行与变更相关的测试；打包依赖或运行时变化必须重新做源码目录外的验收。
 3. 检查 Git 暂存内容，排除个人文件、环境凭据和本机输出。
-4. 发布版本标签，将 `.tgz`、对应源码和 `SHA256SUMS.txt` 上传到同一 GitHub Release。发布正文首行直链 `.tgz`；资产标签区分「Windows 插件安装包」和「开发者源码（不能直接安装）」。
+4. 提交源码后运行 `python plugins/dsh-paper-workbench/tools/prepare-release.py`。工具校对清单、安装包与源码，生成 `output/releases/v<版本>/` 中的带版本安装包、固定名 `dsh-paper-workbench-windows-x64.tgz`、对应源码和 `SHA256SUMS.txt`。发布 `v<版本>` 标签并将这四个文件上传到同一 GitHub Release。发布正文首行直链固定名 `.tgz`；资产标签区分「Windows 插件安装包」和「开发者源码（不能直接安装）」。
 5. 从 Release 重新下载，校对哈希，检查安装包根目录的 `package.json` 含 `dsh.bundle.patch` 且对应 patch 文件存在，再用干净配置执行 `dsh plugin add`；安装说明明确支持的平台及宿主版本。
 
 v0.2.4 按用户要求在同一版本修订界面字体、导入按钮和保存位置设置：功能修订需要重新打包 `.tgz`、对应源码并更新 SHA-256，版本标签应对应本次源码提交。已经安装旧包的设备需要重新下载、安装并完整重启 DSH；仅比较版本号不能判断是否包含这次修订。
+
+## 市场更新通道（从 v0.2.5 起）
+
+目录的 `tarball` 使用 `https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz`。每次正式发行都必须保留相同的附件文件名，并把 Release 设为最新稳定版。不要把源码包作为此附件，不要改为带版本号文件名的 `latest/download`。
+
+市场原生更新检查从最新 Release 的 `vX.Y.Z` 标签读取该标签下 `plugins/dsh-paper-workbench/package.json`，核对包名和版本，再检测同名安装包是否存在。版本必须递增；不覆盖已发布版本的运行代码或移动旧标签。无需修改目录 YAML 或添加插件内自动更新程序。
+
+首次切换：本地 `file:` 来源与旧的带版本文件名 URL 不能自动匹配此通道，用户应通过上述固定 URL 重新安装一次。后续由已收录该条目的 dshmarket 版本负责检测、下载与安装。资料与 DSH 设置独立于包目录，更新不删除资料；更新后完整重启 DSH。
+
+验收应使用隔离配置：先安装上一版，切换在线来源，确认最新版本检测和更新后不再提示同一更新；校对合成资料的论文 ID、附件哈希、摘要、会话绑定与设置。市场尚未合并时可用拟提交条目调用市场本身的检查函数，但必须把该结果与公开市场已收录区分。

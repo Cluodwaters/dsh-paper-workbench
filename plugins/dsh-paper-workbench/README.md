@@ -1,6 +1,6 @@
-# 文献工作台 · DeepSeek Harness 插件 0.2.4
+# 文献工作台 · DeepSeek Harness 插件 0.2.5
 
-**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.4/dsh-paper-workbench-0.2.4.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.5/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
@@ -72,7 +72,15 @@ flowchart LR
 
 ## 安装与构建
 
-普通安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-0.2.4.tgz`，安装后完整退出并重新打开 DSH。下载公开，无需登录 GitHub。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
+推荐使用在线入口安装，以便市场收录并同步后继续通过商店更新：
+
+```powershell
+dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz"
+```
+
+旧版通过本地 `.tgz` 安装的用户，也需执行一次此命令切换来源。安装后完整退出并重新打开 DSH；无需先卸载，原资料库、设置与会话绑定保留。之后在 dshmarket 的「已安装 / 更新」检查并应用新版，再完整重启。更新通道依赖市场已收录该条目及商店对 GitHub Release 的支持；[提交状态](https://github.com/Cluodwaters/dsh-paper-workbench/blob/main/docs/marketplace/README.md) 与人工审核结果分别说明。
+
+手动安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-windows-x64.tgz`。下载公开，无需登录 GitHub；本地文件来源不自动跟随线上发布。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
 
 宿主：DSH `0.2.2-rc.1`，已验证 Windows x64。插件自带 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。其他 DSH 版本尚未实测。
 
@@ -82,7 +90,7 @@ flowchart LR
 node plugins/dsh-paper-workbench/tools/package.mjs
 cd plugins/dsh-paper-workbench/dist
 npm pack --pack-destination .. --ignore-scripts
-dsh plugin --profile desktop add <dsh-paper-workbench-0.2.4.tgz 的绝对路径>
+dsh plugin --profile desktop add <dsh-paper-workbench-0.2.5.tgz 的绝对路径>
 ```
 
 `dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。通过官方插件管理安装后，从 DSH「应用 → 退出」完整退出再打开以加载新版本；关闭窗口可能仅隐藏到托盘。卸载插件不删除资料库。

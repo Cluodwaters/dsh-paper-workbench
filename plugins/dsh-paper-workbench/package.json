@@ -1,10 +1,17 @@
 {
   "name": "dsh-paper-workbench",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
   "description": "Paper Workbench as a native DeepSeek Harness workspace: library, PDF reading and an on-demand embedded Agent panel.",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cluodwaters/dsh-paper-workbench.git",
+    "directory": "plugins/dsh-paper-workbench"
+  },
+  "homepage": "https://github.com/Cluodwaters/dsh-paper-workbench#readme",
+  "bugs": "https://github.com/Cluodwaters/dsh-paper-workbench/issues",
   "engines": {
     "node": ">=22.19.0",
     "dsh": ">=0.2.2-rc.1 <0.3.0"

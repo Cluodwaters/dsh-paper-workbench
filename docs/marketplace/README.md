@@ -1,33 +1,33 @@
-# 文献工作台市场收录材料
+# 文献工作台市场收录与更新
 
-目标目录：[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)。按其 [投稿规则](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md) 准备，规则核对日期为 2026-11-07。此目录是待提交材料，不代表已经上架。
+目标目录：[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)，展示网站：[dshmarket.com](https://dshmarket.com/)。规则核对日期为 2026-11-07。v0.2.5 使用原生 GitHub Release 更新通道；提交申请与审核收录分别记录，不把准备完成当成已上架。
 
 ## 提交内容
 
-将本目录的 `Cluodwaters__dsh-paper-workbench--plugins-dsh-paper-workbench.yml` 放到目标仓库的 `data/plugins/` 下，一个 PR 只添加这一条。PR 说明见 `PR-BODY.md`，不要手工修改目标仓库自动生成的 README。
+将本目录的 `Cluodwaters__dsh-paper-workbench--plugins-dsh-paper-workbench.yml` 放到目标仓库的 `data/plugins/` 下，只添加这一条，正文见 `PR-BODY.md`。不修改其自动生成的 README 或工作流。
 
-- 条目指向插件子目录；该目录的 `package.json` 已声明 `dsh.bundle.patch`。
-- 分类为 `docs`，提供准确的中英文功能说明。
-- `tarball` 固定指向已验证的 v0.2.4 `.tgz`；后续升级需修改这一地址，不使用带版本文件名的 `latest/download`。
-- 市场图标由项目原有 SVG 渲染为 PNG，截图由独立演示资料库的实际界面生成。
-- `screenshots.json` 位于插件 `package.json` 旁，所有图片路径留在插件目录内。
-- 当前发行包仅支持 Windows x64；已验证 DSH 0.2.2-rc.1，其他版本及系统不作已验证声明。
-- 新导入论文默认触发 AI 初读，使用用户自己的 DSH 模型；`autoRead: false` 可关闭。示例截图关闭初读，未提交模型请求。
+- 条目指向插件子目录，清单声明 `dsh.bundle.patch`，仓库已有 `dsh-plugin` topic。
+- `docs` 分类，中英文功能说明，PNG 图标及清单旁的 `screenshots.json`；截图仅用合成文献。
+- 发行包包含独立 Node 25.8.1、后台生产依赖、Reader、OCR 资源及许可证。仅支持 Windows x64，已验证 DSH 0.2.2-rc.1。
+- 新导入论文默认触发 AI 初读，使用用户自己的 DSH 模型；`autoRead: false` 可关闭。普通整理阅读不需要模型。
+- 仓库创建于 2026-11-06 13:15:17 UTC，2026-11-07 21:15:17（北京时间）满 24 小时。若提交时尚未达标，明确保留年龄检查；上游 `regate.yml` 会周期复查非草稿 PR，年龄失败存在 24 小时复查冷却，不承诺达标时立即自动通过。
 
-## 提交前状态核对
+收录须经目录维护者审核、合并及市场同步。提交后的 PR 链接和实际检查结果在本文件继续记录。
 
-仓库已公开。收录要求仓库创建满一天：本仓库创建于 2026-11-06 13:15:17 UTC，在 **2026-11-07 21:15:17（北京时间）** 达标。提交前重新确认 `dsh-plugin` topic 存在、图片链接可访问、安装包可下载且 SHA-256 与 Release 清单一致。
+## 更新通道
 
-准备验收已完成：`dsh-plugin` / `deepseek-harness` topic 已设置；全新桌面配置成功注册 `dsh-paper-workbench@0.2.4`，源码目录外副本的 11 项浏览器集成检查通过。
+固定在线来源：
 
-收录由目录维护者审核；CI 通过后仍需人工审核及市场同步。准备材料本身不创建 PR，也不安排自动提交。
+```text
+https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz
+```
 
-## 安装问题与验证范围
+每次稳定 Release 提供同名附件；`vX.Y.Z` 标签下插件子目录的 `package.json` 包名和版本与附件一致。商店将当前安装版本与最新版本比较，并下载对应标签下的附件，不从源码根目录安装。带版本文件名副本和 `sources.tar.gz` 继续供手动安装与开发归档。
 
-收到的失败截图选择了 `dsh-paper-workbench-0.2.4-sources.tar.gz`。源码根工程没有插件组合包声明；正确 `.tgz` 的包根目录包含 `dsh.bundle`、patch、独立运行时及后台依赖。已修正直接下载链接、文件用途说明及 Release 资产标签。后续字体、导入按钮与保存位置设置修订仍保持 v0.2.4，并重新打包和更新校验清单；旧包用户需重新下载安装。
+本地 `.tgz` 或旧的带版本文件名来源需通过固定 URL 重新安装一次；不会仅因为上传新 Release 就自动变成在线来源。资料库、设置与会话绑定保留。目录收录并同步后，在支持 GitHub Release 更新的 dshmarket 中刷新并检查更新，安装完成后完整重启 DSH。核对的市场实现版本为 1.73.14。
 
-独立验收使用源码目录外的打包副本及隔离 DSH 配置，最终包通过 11 项浏览器集成检查；字体专项 6 项检查覆盖宿主字体实时同步、明暗主题、窄屏与阅读缩放。本机通过官方 CLI 重装后核对实际文件及随包运行时。发布时将本地 SHA-256 与 GitHub Release 资产 digest 核对；完整远程文件重新下载未在本次重复执行。
+## 验证范围
 
-DSH 原生设置现可自定义资料保存位置，保存时继续使用原目录，完整重启后复制校验并启用新位置。存储与迁移相关 88 项单元测试通过；另在隔离 DSH 配置中实测保存、取消、迁移、目标占用后的恢复及原会话继续打开。完整聊天记录仍由 DSH 保存。
+发布前检查版本、组合包声明、独立运行时、外部生产依赖、Release 哈希与完整远程下载；使用源码目录外的打包副本执行浏览器检查。更新测试使用隔离配置与合成资料，并用市场自身的发布源识别及版本检查逻辑验证通道。拟提交目录用于测试，不代表公开目录已同步。
 
-演示文献、元数据均为合成数据，截图已更新为本次字号与导入按钮；不包含个人论文、密钥或聊天，不将本机日志和测试数据库提交到仓库。
+v0.2.4 已完成字体、导入按钮、原生保存位置设置与目录选择器修订；v0.2.5 汇总这些修订并提供递增版本号。数据格式不变，完整对话仍由 DSH 管理。个人论文、数据库、模型凭据、聊天与本机测试日志不发布。
