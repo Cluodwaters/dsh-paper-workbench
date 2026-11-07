@@ -445,6 +445,9 @@ window.__ModuleLoader__.load({
 .pw-settings p { margin:8px 0 18px; }
 .pw-settings label { display:block; margin:22px 0 8px; font-weight:600; }
 .pw-settings .pw-input { display:block; width:100%; font:inherit; padding:9px 11px; }
+.pw-settings-location { display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; }
+.pw-settings-location .pw-input { width:auto; flex:1 1 220px; }
+.pw-settings-location .pw-button { flex:none; white-space:nowrap; }
 .pw-settings-path { display:block; overflow-wrap:anywhere; padding:10px 12px; border:1px solid var(--dsw-alias-border-l1); border-radius:8px; background:var(--dsw-alias-bg-layer-1); }
 .pw-settings-help { color:var(--dsw-alias-label-secondary); font-size:14px; }
 .pw-settings-actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
@@ -583,9 +586,20 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const [revision, setRevision] = useState(undefined)
         const [dirty, setDirty] = useState(false)
         const [busy, setBusy] = useState(false)
+        const [picking, setPicking] = useState(false)
+        const [canPick, setCanPick] = useState(false)
+        const pickerBusy = useRef(false)
         const [error, setError] = useState('')
         const [message, setMessage] = useState('')
         const mounted = useRef(true)
+        useEffect(() => {
+          let alive = true
+          const dispose = ctx.remoteAccess.whenAccess('directoryPicker/pick', () => {
+            if (alive) setCanPick(true)
+            return () => { if (alive) setCanPick(false) }
+          })
+          return () => { alive = false; dispose() }
+        }, [])
         useEffect(() => {
           mounted.current = true
           let timer
@@ -606,11 +620,31 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const pending = saved && active && normalizeWorkspacePath(saved) !== normalizeWorkspacePath(active)
         const migrating = status?.storage?.progress?.phase === 'copying'
         useEffect(() => {
-          if (!dirty && !busy) { setDraft(saved); setRevision(snapshot.revision) }
-        }, [saved, snapshot.revision, dirty, busy])
+          if (!dirty && !busy && !picking) { setDraft(saved); setRevision(snapshot.revision) }
+        }, [saved, snapshot.revision, dirty, busy, picking])
         const restoreDraft = () => { setDirty(false); setDraft(saved); setRevision(snapshot.revision); setError(''); setMessage('') }
+        async function chooseDirectory() {
+          if (pickerBusy.current || disabled || !canPick) return
+          pickerBusy.current = true
+          setPicking(true); setError(''); setMessage('')
+          try {
+            // Use the same narrow Desktop bridge as DSH's own folder picker.
+            // Cancellation or failure must not open a second Host dialog.
+            const desktop = globalThis.__DSH_DIRECTORY_PICKER__
+            const selected = desktop ? await desktop.pick() : await ctx.uiWorkspace.pickDirectory()
+            if (mounted.current && selected !== null) {
+              if (typeof selected !== 'string' || !selected.trim()) throw new Error('未获取到有效的文件夹路径。')
+              setDraft(selected); setDirty(true)
+            }
+          } catch (e) {
+            if (mounted.current) setError(`无法选择文件夹：${e.message || String(e)}。可以重试，或手动填写路径。`)
+          } finally {
+            pickerBusy.current = false
+            if (mounted.current) setPicking(false)
+          }
+        }
         async function save(requested, cancel = false) {
-          if (busy) return
+          if (busy || pickerBusy.current) return
           setBusy(true); setError(''); setMessage('')
           try {
             const response = await fetch(`${BASE}/__workbench/storage/prepare`, {
@@ -627,7 +661,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           } catch (e) { if (mounted.current) setError(e.message || String(e)) }
           finally { if (mounted.current) setBusy(false) }
         }
-        const disabled = busy || migrating || !active || !snapshot.writable || snapshot.revision === undefined
+        const disabled = busy || picking || migrating || !active || !snapshot.writable || snapshot.revision === undefined
         return h('section', {className:'pw-settings','aria-label':'文献工作台保存位置'},
           h('style', null, createStyles()),
           h('h2', null, '文献工作台'),
@@ -635,14 +669,16 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           h('label', null, '当前保存位置'),
           h('span', {className:'pw-settings-path','data-storage-active':true}, active || '正在读取…'),
           h('label', {htmlFor:'pw-storage-path'}, '新的保存位置'),
-          h('input', {id:'pw-storage-path',className:'pw-input',value:draft,disabled,placeholder:'例如 D:\\PaperLibrary\\data',spellCheck:false,onChange:e=>{setDraft(e.target.value);setDirty(true);setMessage('')}}),
-          h('p', {className:'pw-settings-help'}, '填写本机完整路径，目标应为空文件夹或尚不存在。完整重启后复制现有资料，校验通过才启用新位置；原目录保留，不会合并或覆盖其他资料库。'),
+          h('div', {className:'pw-settings-location'},
+            h('input', {id:'pw-storage-path',className:'pw-input',value:draft,disabled,placeholder:'例如 D:\\PaperLibrary\\data',spellCheck:false,onChange:e=>{setDraft(e.target.value);setDirty(true);setMessage('')}}),
+            h('button', {className:'pw-button',disabled:disabled || !canPick,onClick:()=>void chooseDirectory(),'aria-controls':'pw-storage-path'}, picking ? '正在选择…' : '选择文件夹…')),
+          h('p', {className:'pw-settings-help'}, '选择文件夹后自动填入路径，也可手动填写。目标应为空文件夹或尚不存在。点击保存并完整重启后复制现有资料，校验通过才启用新位置；原目录保留，不会合并或覆盖其他资料库。'),
           pending ? h('p', {'data-storage-pending':true}, '等待完整重启后生效：', h('span',{className:'pw-settings-path'},saved)) : null,
           migrating ? h('p', {role:'status'}, `正在复制并校验：${status.storage.progress.copiedFiles} / ${status.storage.progress.totalFiles} 个文件。`) : null,
           status?.phase === 'failed' ? h('p', {role:'alert'}, `服务未启动：${status.error} 原资料保留在上面的当前保存位置。`) : null,
           h('div', {className:'pw-settings-actions'},
             h('button', {className:'pw-button','data-variant':'primary',disabled:disabled || !draft.trim() || draft.trim() === saved,onClick:()=>void save(draft)}, busy ? '正在保存…' : '保存，重启后迁移'),
-            h('button', {className:'pw-button',disabled:busy || migrating,onClick:restoreDraft}, '重新读取设置'),
+            h('button', {className:'pw-button',disabled:busy || picking || migrating,onClick:restoreDraft}, '重新读取设置'),
             pending ? h('button', {className:'pw-button',disabled,onClick:()=>void save(active,true)}, '取消待生效更改') : null),
           !snapshot.writable && snapshot.revision !== undefined ? h('p',{role:'alert'},'当前 DSH 配置只读，无法修改保存位置。') : null,
           error ? h('p', {role:'alert'}, error) : null,
@@ -2042,7 +2078,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
     }
 
     return {
-      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces', 'layout', 'configForms'],
+      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces', 'uiWorkspace', 'layout', 'configForms', 'remoteAccess'],
       apply(ctx) {
         ctx.effect(
           () => {
