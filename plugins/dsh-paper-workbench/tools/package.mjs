@@ -69,7 +69,7 @@ if (existsSync(distRoot)) rmSync(distRoot, { recursive: true, force: true })
 mkdirSync(distRoot, { recursive: true })
 
 // 1. Plugin halves and display resources.
-for (const file of ['index.js', 'agents.js', 'client.js', 'cordis.patch.yml', 'icon.svg', 'README.md']) {
+for (const file of ['index.js', 'agents.js', 'client.js', 'storage-location.js', 'cordis.patch.yml', 'icon.svg', 'README.md']) {
   const source = path.join(pluginRoot, file)
   if (!existsSync(source)) throw new Error(`missing plugin file: ${source}`)
   cpSync(source, path.join(distRoot, file))
@@ -84,6 +84,7 @@ const manifest = JSON.parse(readFileSync(path.join(pluginRoot, 'package.json'), 
 manifest.files = [
   'index.js',
   'agents.js',
+  'storage-location.js',
   'client.js',
   'cordis.patch.yml',
   'README.md',
@@ -95,6 +96,12 @@ manifest.files = [
   'RESOURCES.json',
 ]
 writeFileSync(path.join(distRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+// Bundle the official Config schema and its pinned transitive runtime packages;
+// installing a local .tgz must not require an extra online dependency fetch.
+for (const name of ['@deepseek-ai/schemastery', '@deepseek-ai/cosmokit', '@standard-schema/spec']) {
+  const dependency = requireDir(path.join(repoRoot, 'node_modules', name), `Host dependency ${name}`)
+  cpSync(dependency, path.join(distRoot, 'node_modules', name), { recursive:true })
+}
 
 // 2. Backend: fresh source from the checkout plus verified staged production
 //    assets. The plugin does not modify the checked-in src.
@@ -137,6 +144,8 @@ const bridgeFiles = [
   'src/web/harness-bridge.js',
   'src/web/url.js',
   'src/web/theme-init.js',
+  'src/web/index.html',
+  'src/web/library/library.css',
   'src/web/harness.css',
   'src/web/app.js',
   'src/web/reader-shell.css',
@@ -145,7 +154,7 @@ const bridgeFiles = [
 const provenance = {
   schemaVersion: 1,
   builtAt: new Date().toISOString(),
-  plugin: { name: manifest.name, version: manifest.version, files:Object.fromEntries(['index.js','agents.js','client.js'].map(file=>[file,sha256(path.join(distRoot,file))])) },
+  plugin: { name: manifest.name, version: manifest.version, files:Object.fromEntries(['index.js','agents.js','client.js','storage-location.js'].map(file=>[file,sha256(path.join(distRoot,file))])) },
   backend: {
     sourceRoot: 'src/',
     files: Object.fromEntries(bridgeFiles.map((relative) => [relative, sha256(path.join(backendRoot, relative))])),

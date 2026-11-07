@@ -11,6 +11,7 @@ This personal validation project follows the GNU Affero General Public License v
 - **Tesseract.js 7.0.0 / Tesseract.js-core** and **tessdata_fast** English / Simplified Chinese models: Apache-2.0. Models run offline. Pinned commits and hashes are in `phase3-assets.lock.json`; model license is in `resources/licenses/tessdata-fast.txt`.
 - **citeproc-js 2.4.63**: Frank Bennett and contributors; the AGPL-3.0 option is used. **CSL styles and locales**: Citation Style Language contributors, CC-BY-SA-3.0; styles retain author and license declarations, and locale attribution is in `resources/licenses/csl-locales.txt`.
 - **@napi-rs/canvas 1.1.0**: MIT with upstream Skia notices; **he 1.2.0**: MIT. Production package licenses and SBOM files are retained.
+- **@deepseek-ai/schemastery 3.19.0**, **@deepseek-ai/cosmokit** and **@standard-schema/spec**: MIT. The DSH plugin bundles these settings-schema runtime dependencies with their original license files; exact versions are recorded in `package-lock.json`.
 - The bridge's QUOTE-to-ADDIN initialization technique follows [Zotero Word for Windows Integration](https://github.com/zotero/zotero-word-for-windows-integration), `document.cpp` / `insertFieldRaw` (AGPL-3.0-or-later). Our own field names and protocol are used; Zotero's Word binary/template is not bundled.
 
 If redistributing the application later, include complete applicable license notices and corresponding source/build material as required by the licenses. Personal papers and test PDFs are not part of the software distribution.

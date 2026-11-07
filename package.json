@@ -24,6 +24,7 @@
     "tesseract.js": "7.0.0"
   },
   "devDependencies": {
+    "@deepseek-ai/schemastery": "3.19.0",
     "electron": "45.1.0",
     "electron-builder": "26.18.0",
     "prettier": "3.9.10"

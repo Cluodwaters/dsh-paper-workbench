@@ -330,21 +330,47 @@ small {
 }
 .import-actions {
   display: flex;
+  align-items: stretch;
   position: relative;
+  min-height: 38px;
 }
 .import-actions > .primary {
   border-radius: 7px 0 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.import-menu {
+  display: flex;
 }
 .import-menu summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
   list-style: none;
   cursor: pointer;
   background: var(--green);
   color: white;
-  padding: 8px 9px;
+  padding: 0;
+  width: 32px;
   border-radius: 0 7px 7px 0;
-  font-size: var(--h-font-control, 12px);
-  height: 36px;
-  border-left: 1px solid var(--h-muted);
+  border: 1px solid var(--green);
+  border-left-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+.import-menu summary:hover,
+.import-menu[open] summary {
+  background: var(--h-hover);
+}
+.import-menu summary svg {
+  display: block;
+  flex: none;
+}
+.import-menu summary:focus-visible {
+  outline: 2px solid var(--h-ink);
+  outline-offset: -4px;
 }
 .import-menu summary::-webkit-details-marker {
   display: none;
@@ -352,7 +378,7 @@ small {
 .import-menu[open] > button {
   position: absolute;
   right: 0;
-  top: 43px;
+  top: calc(100% + 6px);
   z-index: 25;
   white-space: nowrap;
   padding: 12px 17px;
@@ -1687,10 +1713,6 @@ small {
     font-size: var(--h-font-caption, 10px);
     padding: 8px;
   }
-  .import-menu summary {
-    height: 33px;
-    padding: 7px;
-  }
   .app-body {
     height: calc(100vh - 62px);
     grid-template-columns: 1fr;
@@ -1801,10 +1823,6 @@ small {
   }
   .search-box {
     height: 32px;
-  }
-  .import-menu summary {
-    height: 30px;
-    padding: 6px;
   }
   .toolbar-actions #save-query {
     max-width: 81px;

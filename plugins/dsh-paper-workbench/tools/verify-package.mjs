@@ -96,6 +96,10 @@ check('packaged bridge files match the recorded provenance and the current check
 
 check('packaged bundle includes backend production dependencies, Reader build and OCR assets', () => {
   const required = [
+    'storage-location.js',
+    'node_modules/@deepseek-ai/schemastery/lib/index.mjs',
+    'node_modules/@deepseek-ai/cosmokit/lib/index.js',
+    'node_modules/@standard-schema/spec/package.json',
     'resources/backend/node_modules/he/package.json',
     'resources/backend/node_modules/tesseract.js/package.json',
     'resources/backend/node_modules/@napi-rs/canvas/package.json',

@@ -439,6 +439,16 @@ window.__ModuleLoader__.load({
 .pw-chip-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 .pw-topic-row { display:grid; grid-template-columns:minmax(110px,1fr) auto auto; }
 .pw-topic-row > .pw-chip { grid-column:1 / -1; display:block; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pw-settings { max-width:680px; padding:20px 24px; font:inherit; line-height:1.6; color:var(--dsw-alias-label-primary); }
+.pw-settings, .pw-settings * { box-sizing:border-box; }
+.pw-settings h2 { margin:0 0 8px; font-size:20px; }
+.pw-settings p { margin:8px 0 18px; }
+.pw-settings label { display:block; margin:22px 0 8px; font-weight:600; }
+.pw-settings .pw-input { display:block; width:100%; font:inherit; padding:9px 11px; }
+.pw-settings-path { display:block; overflow-wrap:anywhere; padding:10px 12px; border:1px solid var(--dsw-alias-border-l1); border-radius:8px; background:var(--dsw-alias-bg-layer-1); }
+.pw-settings-help { color:var(--dsw-alias-label-secondary); font-size:14px; }
+.pw-settings-actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.pw-settings [role="alert"] { color:var(--dsw-alias-state-error-primary); }
 .pw-chip { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-base); color:var(--dsw-alias-label-secondary); border-radius:999px; padding:2px 8px; font-size:13px; }
 .pw-chip[data-tone="accent"] { color:var(--dsw-alias-brand-primary); border-color:var(--dsw-alias-brand-primary); }
 .pw-quick { display:flex; flex-wrap:wrap; gap:6px; }
@@ -563,6 +573,80 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             { slots: { views: FixedChatConversationView } },
           ),
         )
+      }
+
+      function StorageSettings() {
+        const form = useMemo(() => ctx.configForms.get('paper-workbench'), [])
+        const snapshot = React.useSyncExternalStore(callback => form.subscribe(callback), () => form.getSnapshot())
+        const [status, setStatus] = useState(null)
+        const [draft, setDraft] = useState('')
+        const [revision, setRevision] = useState(undefined)
+        const [dirty, setDirty] = useState(false)
+        const [busy, setBusy] = useState(false)
+        const [error, setError] = useState('')
+        const [message, setMessage] = useState('')
+        const mounted = useRef(true)
+        useEffect(() => {
+          mounted.current = true
+          let timer
+          const poll = async () => {
+            try {
+              const response = await fetch(`${BASE}/__workbench/status`, { cache:'no-store' })
+              if (!response.ok) throw new Error('无法读取当前保存位置。')
+              const value = await response.json()
+              if (mounted.current) setStatus(value)
+            } catch (e) { if (mounted.current) setError(e.message) }
+            if (mounted.current) timer = setTimeout(poll, 1500)
+          }
+          void poll()
+          return () => { mounted.current = false; clearTimeout(timer) }
+        }, [])
+        const active = status?.storage?.activeRoot || status?.dataRoot || ''
+        const saved = snapshot.value?.storageLocation?.to || active
+        const pending = saved && active && normalizeWorkspacePath(saved) !== normalizeWorkspacePath(active)
+        const migrating = status?.storage?.progress?.phase === 'copying'
+        useEffect(() => {
+          if (!dirty && !busy) { setDraft(saved); setRevision(snapshot.revision) }
+        }, [saved, snapshot.revision, dirty, busy])
+        const restoreDraft = () => { setDirty(false); setDraft(saved); setRevision(snapshot.revision); setError(''); setMessage('') }
+        async function save(requested, cancel = false) {
+          if (busy) return
+          setBusy(true); setError(''); setMessage('')
+          try {
+            const response = await fetch(`${BASE}/__workbench/storage/prepare`, {
+              method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({path:requested}),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error?.message || '保存位置检查失败。')
+            const accepted = await form.mutate([{op:'set',path:['storageLocation'],value:result.plan}], revision)
+            if (!accepted) throw new Error('DSH 未接受设置，可能已被其他窗口修改或被更高层配置覆盖。输入已保留，请重新读取设置后再试。')
+            if (mounted.current) {
+              setDirty(false); setDraft(result.plan.to); setRevision(form.getSnapshot().revision)
+              setMessage(cancel ? '已取消待生效更改；若上次迁移失败，请完整重启 DSH 以恢复服务。' : '设置已保存。请从 DSH「应用 → 退出」完整退出再打开，届时开始复制并校验资料。')
+            }
+          } catch (e) { if (mounted.current) setError(e.message || String(e)) }
+          finally { if (mounted.current) setBusy(false) }
+        }
+        const disabled = busy || migrating || !active || !snapshot.writable || snapshot.revision === undefined
+        return h('section', {className:'pw-settings','aria-label':'文献工作台保存位置'},
+          h('style', null, createStyles()),
+          h('h2', null, '文献工作台'),
+          h('p', {className:'pw-settings-help'}, '设置论文、共享摘要及 Agent 工作目录的保存位置。完整聊天记录仍由 DSH 管理。'),
+          h('label', null, '当前保存位置'),
+          h('span', {className:'pw-settings-path','data-storage-active':true}, active || '正在读取…'),
+          h('label', {htmlFor:'pw-storage-path'}, '新的保存位置'),
+          h('input', {id:'pw-storage-path',className:'pw-input',value:draft,disabled,placeholder:'例如 D:\\PaperLibrary\\data',spellCheck:false,onChange:e=>{setDraft(e.target.value);setDirty(true);setMessage('')}}),
+          h('p', {className:'pw-settings-help'}, '填写本机完整路径，目标应为空文件夹或尚不存在。完整重启后复制现有资料，校验通过才启用新位置；原目录保留，不会合并或覆盖其他资料库。'),
+          pending ? h('p', {'data-storage-pending':true}, '等待完整重启后生效：', h('span',{className:'pw-settings-path'},saved)) : null,
+          migrating ? h('p', {role:'status'}, `正在复制并校验：${status.storage.progress.copiedFiles} / ${status.storage.progress.totalFiles} 个文件。`) : null,
+          status?.phase === 'failed' ? h('p', {role:'alert'}, `服务未启动：${status.error} 原资料保留在上面的当前保存位置。`) : null,
+          h('div', {className:'pw-settings-actions'},
+            h('button', {className:'pw-button','data-variant':'primary',disabled:disabled || !draft.trim() || draft.trim() === saved,onClick:()=>void save(draft)}, busy ? '正在保存…' : '保存，重启后迁移'),
+            h('button', {className:'pw-button',disabled:busy || migrating,onClick:restoreDraft}, '重新读取设置'),
+            pending ? h('button', {className:'pw-button',disabled,onClick:()=>void save(active,true)}, '取消待生效更改') : null),
+          !snapshot.writable && snapshot.revision !== undefined ? h('p',{role:'alert'},'当前 DSH 配置只读，无法修改保存位置。') : null,
+          error ? h('p', {role:'alert'}, error) : null,
+          message ? h('p', {role:'status'}, message) : null)
       }
 
       function PaperPage(props) {
@@ -1954,11 +2038,11 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         )
       }
 
-      return { PaperIcon, PaperPage, PaperConversation, t }
+      return { PaperIcon, PaperPage, PaperConversation, StorageSettings, t }
     }
 
     return {
-      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces', 'layout'],
+      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces', 'layout', 'configForms'],
       apply(ctx) {
         ctx.effect(
           () => {
@@ -1979,6 +2063,12 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           'paper-workbench: dictionaries',
         )
         const api = createClient(ctx)
+        ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register({
+          name:'settings.section', id:'paper-workbench', order:65, label:()=>api.t('panel.title'),
+        }, api.StorageSettings)), 'paper-workbench: storage settings')
+        ctx.effect(() => ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+          name:'settings.section.icon', id:'paper-workbench',
+        }, api.PaperIcon)), 'paper-workbench: settings icon')
         ctx.effect(
           () =>
             ctx.slots.inject('sidebar.panellist', () =>

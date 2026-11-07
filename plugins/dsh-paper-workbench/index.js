@@ -20,9 +20,11 @@ import {
   statSync,
 } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { homedir } from 'node:os'
 import { createAgentCoordinator } from './agents.js'
+import z from '@deepseek-ai/schemastery'
+import { migrateStorageLocation, prepareStorageLocation, sameLocation } from './storage-location.js'
 
 const BASE_PATH = '/paper-workbench'
 const MIN_NODE = [25, 8, 1]
@@ -36,6 +38,19 @@ const MAX_CONTEXT_SELECTION = 8000
 const MAX_PAPER_CONTEXT_BODY = 256 * 1024
 
 export const inject = ['webServer']
+
+// Volatile keeps a settings write from unloading an in-use reader or backend.
+// The captured plan is applied only on the next full Host/plugin startup.
+export const Config = z.object({
+  storageLocation: z.union([
+    z.const(null),
+    z.object({ from: z.string().required(), to: z.string().required(), id: z.string().required() }),
+  ]).default(null).volatile(),
+})
+function storageConfig(config) {
+  const value = config.storageLocation
+  return typeof value?.get === 'function' ? value.get() : value
+}
 
 const pluginRoot = path.dirname(fileURLToPath(import.meta.url))
 const workspaceRoot = path.resolve(pluginRoot, '..', '..')
@@ -308,8 +323,10 @@ function createSupervisor(ctx, options) {
   const conversationsRoot = path.join(dataRoot, 'harness-conversations')
   const logsDir = path.join(dataRoot, 'logs')
   const logFile = path.join(logsDir, 'backend.log')
-  mkdirSync(conversationsRoot, { recursive: true })
-  mkdirSync(logsDir, { recursive: true })
+  let storageReady = !options.storageLocation
+  let storageProgress = null
+  let preparingStorage = null
+  const storageAbort = new AbortController()
 
   function appendLog(stream) {
     const stamp = new Date().toISOString()
@@ -356,6 +373,8 @@ function createSupervisor(ctx, options) {
       port: state.port,
       dataRoot,
       conversationsRoot,
+      activeDataRoot: storageReady ? dataRoot : options.storageLocation.from,
+      storageProgress,
       backendRoot: options.backendRoot,
       node: state.node,
       integration: state.integration,
@@ -471,7 +490,6 @@ function createSupervisor(ctx, options) {
   async function start() {
     if (stopping) return
     if (state.ready) return
-    ensureLogStream()
     state.phase = 'starting'
     state.error = null
     state.ready = false
@@ -482,6 +500,25 @@ function createSupervisor(ctx, options) {
       if (!isFile(path.join(options.backendRoot, 'src', 'server', 'main.mjs'))) {
         throw new Error(`后台入口不存在：${path.join(options.backendRoot, 'src', 'server', 'main.mjs')}。请配置 backendRoot 或使用打包版本。`)
       }
+      if (!storageReady) {
+        if (!preparingStorage) preparingStorage = (async () => {
+          const { lockLibrary } = await import(pathToFileURL(path.join(options.backendRoot, 'src/storage/library-lock.mjs')).href)
+          await migrateStorageLocation(options.storageLocation, {
+            lockLibrary,
+            signal: storageAbort.signal,
+            progress: value => { storageProgress = value },
+          })
+          storageReady = true
+        })().catch(error => {
+          storageProgress = { ...storageProgress, phase: 'failed', error: error.message }
+          throw error
+        }).finally(() => { preparingStorage = null })
+        await preparingStorage
+      }
+      if (stopping) return
+      mkdirSync(conversationsRoot, { recursive: true })
+      mkdirSync(logsDir, { recursive: true })
+      ensureLogStream()
       state.port = options.port || (await pickFreePort())
       const env = {
         ...process.env,
@@ -519,6 +556,8 @@ function createSupervisor(ctx, options) {
 
   async function stop() {
     stopping = true
+    storageAbort.abort()
+    await preparingStorage?.catch(() => {})
     if (restartTimer) {
       clearTimeout(restartTimer)
       restartTimer = null
@@ -554,7 +593,7 @@ function createSupervisor(ctx, options) {
   return { state, status, start, stop, restart, token: () => token, conversationsRoot, dataRoot }
 }
 
-function createRoutes(ctx, supervisor, paperContexts, coordinator) {
+function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation = () => undefined) {
   const origin = new URL(ctx.webServer.getOrigin())
   const allowedHosts = new Set([origin.host, `localhost:${origin.port}`, `127.0.0.1:${origin.port}`])
   const allowedOrigins = new Set([
@@ -598,6 +637,12 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator) {
       error: status.error,
       pid: status.pid,
       dataRoot: status.dataRoot,
+      storage: {
+        activeRoot: status.activeDataRoot,
+        requestedRoot: readLocation()?.to || status.dataRoot,
+        pending: !sameLocation(readLocation()?.to || status.dataRoot, status.activeDataRoot),
+        progress: status.storageProgress,
+      },
       conversationsRoot: status.conversationsRoot,
       backendRoot: status.backendRoot,
       node: status.node,
@@ -744,6 +789,17 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator) {
       })
     }
     const pathname = url.pathname
+    if (pathname === `${BASE_PATH}/__workbench/storage/prepare` && request.method === 'POST') {
+      try {
+        const status = supervisor.status()
+        if (status.storageProgress?.phase === 'copying') throw new Error('资料正在迁移，请等待完成。')
+        const input = await readJsonBody(request, 8192)
+        const plan = prepareStorageLocation(status.activeDataRoot, input.path)
+        return sendJson(response, 200, { plan })
+      } catch (error) {
+        return sendJson(response, 409, { error: { code: 'STORAGE_LOCATION', message: error.message } })
+      }
+    }
     if (pathname.startsWith(`${BASE_PATH}/api/agents/internal/`)) {
       return sendJson(response,403,{error:{code:'HOST_ONLY',message:'内部 Agent 接口仅供宿主使用。'}})
     }
@@ -883,9 +939,11 @@ export function apply(ctx, rawConfig) {
   if (basePath !== BASE_PATH) {
     throw new Error(`paper-workbench: the client half is built for ${BASE_PATH}; basePath overrides are not supported yet`)
   }
+  const initialLocation = storageConfig(config)
   const supervisor = createSupervisor(ctx, {
     backendRoot,
-    dataRoot: config.dataRoot ? path.resolve(String(config.dataRoot)) : undefined,
+    dataRoot: initialLocation?.to || (config.dataRoot ? path.resolve(String(config.dataRoot)) : undefined),
+    storageLocation: initialLocation,
     nodeExecutable: config.nodeExecutable ? path.resolve(String(config.nodeExecutable)) : undefined,
     bundledNodeExecutable: isFile(bundledRuntime) ? bundledRuntime : undefined,
     port: Number.isInteger(config.port) && config.port > 0 && config.port < 65536 ? config.port : undefined,
@@ -895,7 +953,11 @@ export function apply(ctx, rawConfig) {
   })
   const paperContexts = createPaperContextStore()
   const coordinator = createAgentCoordinator(ctx,{backend:createBackendClient(supervisor),conversationsRoot:supervisor.conversationsRoot,config})
-  const routes = createRoutes(ctx, supervisor, paperContexts,coordinator)
+  const routes = createRoutes(ctx, supervisor, paperContexts,coordinator, () => storageConfig(config))
+
+  ctx.inject?.(['settings'], child => {
+    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
+  })
 
   ctx.effect(
     () => {

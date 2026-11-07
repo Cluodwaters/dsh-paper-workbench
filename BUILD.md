@@ -69,6 +69,8 @@ Pop-Location
 
 `stage-desktop.mjs` 编译 Word 连接器并按 npm 的生产依赖图收集外部依赖。插件打包脚本组合最新 `src/`、固定 Reader/OCR 资源、运行时和许可证，并生成文件哈希记录。必须在 `dist` 目录里运行 `npm pack`，避免误打包根工程。
 
+插件 Host 的原生设置使用固定版本 `@deepseek-ai/schemastery`，由根项目 `npm ci` 安装，打包时连同 `@deepseek-ai/cosmokit`、`@standard-schema/spec` 及许可证显式复制并捆绑。独立验收同时检查这些 Host 依赖和后台生产依赖，避免安装后依赖源码目录。
+
 生成的 `plugins/dsh-paper-workbench/dsh-paper-workbench-<版本>.tgz` 不进入 Git 历史，作为 Release 附件发布。
 
 Release 另附 `dsh-paper-workbench-<版本>-sources.tar.gz`：包含对应运行代码的仓库文件，以及按 `sources.download.json` 校验过的固定上游源码。它是开发材料，不是可安装插件：根 `package.json` 没有 `dsh.bundle`，直接交给 DSH 会提示「这个包没有声明组合包」。npm 依赖仍按锁文件安装；无需把 `node_modules/` 提交到源码仓库。
@@ -94,4 +96,4 @@ node plugins/dsh-paper-workbench/tools/verify-package.mjs --fixture "<合成测�
 4. 发布版本标签，将 `.tgz`、对应源码和 `SHA256SUMS.txt` 上传到同一 GitHub Release。发布正文首行直链 `.tgz`；资产标签区分「Windows 插件安装包」和「开发者源码（不能直接安装）」。
 5. 从 Release 重新下载，校对哈希，检查安装包根目录的 `package.json` 含 `dsh.bundle.patch` 且对应 patch 文件存在，再用干净配置执行 `dsh plugin add`；安装说明明确支持的平台及宿主版本。
 
-v0.2.4 的下载入口修正最初只更新说明。随后按用户要求在同一版本修订界面字体：这次需要重新打包 `.tgz`、对应源码并更新 SHA-256，版本标签应对应本次源码提交。已经安装旧包的设备需要重新下载、安装并完整重启 DSH；仅比较版本号不能判断是否包含这次修订。
+v0.2.4 按用户要求在同一版本修订界面字体、导入按钮和保存位置设置：功能修订需要重新打包 `.tgz`、对应源码并更新 SHA-256，版本标签应对应本次源码提交。已经安装旧包的设备需要重新下载、安装并完整重启 DSH；仅比较版本号不能判断是否包含这次修订。

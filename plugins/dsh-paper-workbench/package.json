@@ -10,6 +10,10 @@
     "dsh": ">=0.2.2-rc.1 <0.3.0"
   },
   "main": "index.js",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.19.0"
+  },
+  "bundleDependencies": ["@deepseek-ai/schemastery"],
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -19,6 +23,7 @@
   "files": [
     "index.js",
     "agents.js",
+    "storage-location.js",
     "client.js",
     "cordis.patch.yml",
     "README.md",
@@ -43,6 +48,7 @@
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-settings",
         "@deepseek-ai/dsh-client-ui-theme",
         "@deepseek-ai/dsh-client-ui-workspace"
       ]
