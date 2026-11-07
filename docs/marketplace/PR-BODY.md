@@ -12,7 +12,8 @@ Validation completed for v0.2.6:
 - Fixes Windows package locks by executing the backend, Node and native dependencies from verified copies outside node_modules. Partial or corrupt copies never activate; old and new runtime generations coexist.
 - On Windows / DSH 0.2.2-rc.1 with pnpm's hoisted layout, the official plugin manager replaced a running 0.2.6 installation with an unpublished 0.2.7-qa.0 fixture while DSH and the old backend stayed alive. All 37 SQLite tables, synthetic PDF metadata, shared digest and session binding survived. Normal host restart then activated the new cache generation.
 - The real 0.2.5 package migrated via the host's disable/install/enable APIs without closing DSH. Durable state survived migration and reopening the profile.
-- The fixed asset name and tag/subdirectory manifest contract used by dshmarket 1.73.14 remain unchanged. No private model calls or personal data are involved in these checks.
+- Complete public installer downloaded (89,701,957 bytes); SHA-256 `12f56f7a8eb5153938f21d59a97c8199a607e83bd3fbc127a18f55ad3d724957` matches the local artifact, GitHub asset digest and checksum file.
+- dshmarket 1.73.14 native checks using this proposed entry and isolated online-source profiles offer `0.2.5 → 0.2.6` at the correct pinned asset URL, and no duplicate update on 0.2.6. No private model calls or personal data are involved.
 
 Scope: live replacement uses local tgz files via the official host API. Online source/version detection and published asset integrity are verified separately; this is not claimed as a completed public store UI update. Public store validation follows catalog merge/sync. Existing local-file installs must first adopt the matching online source to receive native store update checks.
 
