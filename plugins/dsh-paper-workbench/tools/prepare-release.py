@@ -31,36 +31,54 @@ expected_url = f"https://github.com/Cluodwaters/dsh-paper-workbench/releases/lat
 if f"tarball: {expected_url}" not in catalog.read_text(encoding="utf-8").splitlines():
     raise RuntimeError("Catalog must use the fixed-name latest release asset")
 installer = plugin / f"dsh-paper-workbench-{version}.tgz"
-with tarfile.open(installer, "r:gz") as packed:
-    actual = json.load(packed.extractfile("package/package.json"))
-    if actual != manifest:
-        raise RuntimeError("Installer manifest differs from the committed source")
-    patch = actual["dsh"]["bundle"]["patch"].removeprefix("./")
-    if not packed.getmember("package/" + patch).isfile():
-        raise RuntimeError("Installer bundle patch is missing")
-    provenance = json.load(packed.extractfile("package/RESOURCES.json"))
-    if provenance["plugin"]["version"] != version:
-        raise RuntimeError("Installer provenance version differs")
-    for relative in ["index.js", "agents.js", "client.js", "storage-location.js", "runtime-cache.js", "README.md", "cordis.patch.yml"]:
-        if packed.extractfile("package/" + relative).read() != (plugin / relative).read_bytes():
-            raise RuntimeError(f"Installer differs from source: {relative}")
-    for relative, expected in provenance["backend"]["files"].items():
-        data = packed.extractfile("package/resources/backend/" + relative).read()
-        if hashlib.sha256(data).hexdigest() != expected or data != (root / relative).read_bytes():
-            raise RuntimeError(f"Installer backend differs from source: {relative}")
-    runtime_manifest = json.load(packed.extractfile("package/RUNTIME-MANIFEST.json"))
-    runtime_names = {entry["path"] for entry in runtime_manifest["files"]}
-    packed_runtime_names = {entry.name.removeprefix("package/resources/") for entry in packed.getmembers()
-                            if entry.isfile() and entry.name.startswith("package/resources/")}
-    if runtime_names != packed_runtime_names:
-        raise RuntimeError("Runtime manifest does not cover exactly the published resources")
-    canonical = json.dumps(runtime_manifest["files"], ensure_ascii=False, separators=(",", ":")).encode()
-    if hashlib.sha256(canonical).hexdigest() != runtime_manifest["key"]:
-        raise RuntimeError("Runtime manifest digest differs")
-    for entry in runtime_manifest["files"]:
-        data = packed.extractfile("package/resources/" + entry["path"]).read()
-        if len(data) != entry["size"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
-            raise RuntimeError(f"Runtime resource integrity mismatch: {entry['path']}")
+# Stream the gzip archive once. Seeking separately for every resource would
+# repeatedly decompress the 90 MB installer on each validation pass.
+packed_files = {}
+payloads = {}
+needed_payloads = {"package/package.json", "package/RESOURCES.json", "package/RUNTIME-MANIFEST.json"}
+with tarfile.open(installer, "r|gz") as packed:
+    for entry in packed:
+        if entry.isdir():
+            continue
+        if not entry.isfile() or entry.name in packed_files:
+            raise RuntimeError(f"Unexpected or duplicate installer entry: {entry.name}")
+        source = packed.extractfile(entry)
+        digest = hashlib.sha256()
+        if entry.name in needed_payloads:
+            data = source.read()
+            payloads[entry.name] = data
+            digest.update(data)
+        else:
+            while chunk := source.read(1024 * 1024):
+                digest.update(chunk)
+        packed_files[entry.name] = {"size": entry.size, "sha256": digest.hexdigest()}
+actual = json.loads(payloads["package/package.json"])
+if actual != manifest:
+    raise RuntimeError("Installer manifest differs from the committed source")
+patch = actual["dsh"]["bundle"]["patch"].removeprefix("./")
+if "package/" + patch not in packed_files:
+    raise RuntimeError("Installer bundle patch is missing")
+provenance = json.loads(payloads["package/RESOURCES.json"])
+if provenance["plugin"]["version"] != version:
+    raise RuntimeError("Installer provenance version differs")
+for relative in ["index.js", "agents.js", "client.js", "storage-location.js", "runtime-cache.js", "README.md", "cordis.patch.yml"]:
+    if packed_files["package/" + relative]["sha256"] != hashlib.sha256((plugin / relative).read_bytes()).hexdigest():
+        raise RuntimeError(f"Installer differs from source: {relative}")
+for relative, expected in provenance["backend"]["files"].items():
+    if packed_files["package/resources/backend/" + relative]["sha256"] != expected or hashlib.sha256((root / relative).read_bytes()).hexdigest() != expected:
+        raise RuntimeError(f"Installer backend differs from source: {relative}")
+runtime_manifest = json.loads(payloads["package/RUNTIME-MANIFEST.json"])
+runtime_names = {entry["path"] for entry in runtime_manifest["files"]}
+packed_runtime_names = {name.removeprefix("package/resources/") for name in packed_files if name.startswith("package/resources/")}
+if runtime_names != packed_runtime_names:
+    raise RuntimeError("Runtime manifest does not cover exactly the published resources")
+canonical = json.dumps(runtime_manifest["files"], ensure_ascii=False, separators=(",", ":")).encode()
+if hashlib.sha256(canonical).hexdigest() != runtime_manifest["key"]:
+    raise RuntimeError("Runtime manifest digest differs")
+for entry in runtime_manifest["files"]:
+    actual_file = packed_files["package/resources/" + entry["path"]]
+    if actual_file["size"] != entry["size"] or actual_file["sha256"] != entry["sha256"]:
+        raise RuntimeError(f"Runtime resource integrity mismatch: {entry['path']}")
 release = root / "output/releases" / f"v{version}"
 release.mkdir(parents=True, exist_ok=True)
 versioned_asset = release / installer.name
