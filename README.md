@@ -2,6 +2,10 @@
 
 在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.4**，已验证平台为 **Windows x64 + DSH 0.2.2-rc.1**。
 
+**[下载 Windows x64 插件安装包 · v0.2.4](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.4/dsh-paper-workbench-0.2.4.tgz)**
+
+下载后保持 `.tgz` 原样，在 DSH「插件 → 安装本地插件」中选择它。`sources.tar.gz` 和 GitHub 的 `Source code` 是开发源码，不能直接安装。若提示「这个包没有声明组合包」，请核对选择的是上面的 `.tgz` 文件。
+
 - 独立「文献工作台」入口，沿用 DSH 主题，提供文献库、PDF 阅读器和工具页。
 - 拖动 AI 侧栏左边的分隔线调整宽度，自动记住上次的设置；双击恢复默认，方向键可微调。
 - 文献库助手按需检索标题、作者、期刊、年份、标签和已保存摘要；不直接读取论文全文或完整论文对话。
@@ -13,8 +17,8 @@
 ## 在其他设备安装
 
 1. 在 Windows x64 设备安装兼容的 DSH，并配置好需要使用的模型账号。
-2. 登录有权限的 GitHub 账号，进入 [Releases 下载页](https://github.com/Cluodwaters/dsh-paper-workbench/releases)，下载 `dsh-paper-workbench-0.2.4.tgz`。GitHub 自动生成的 Source code 压缩包用于开发，不能直接作为插件安装。
-3. 在 PowerShell 中运行，将路径替换为下载文件的绝对路径：
+2. 点击上方直接下载链接，保存 **`dsh-paper-workbench-0.2.4.tgz`**。仓库和下载均已公开，无需 GitHub 登录。
+3. 在 DSH 插件页面选择安装本地插件，选中这个 `.tgz`，等待安装成功。也可在 PowerShell 中运行，将路径替换为下载文件的绝对路径：
 
    ```powershell
    dsh plugin --profile desktop add "C:\Downloads\dsh-paper-workbench-0.2.4.tgz"
@@ -30,7 +34,28 @@
 
 安装包包含后台 Node 25.8.1、生产依赖、阅读器、OCR 模型和许可证，日常使用无需自行构建。当前安装包不能直接用于 macOS、Linux 或 Windows ARM。
 
+| 下载文件 | 用途 |
+|---|---|
+| **`dsh-paper-workbench-0.2.4.tgz`** | **安装到 DSH 的完整插件包；普通用户选择这个文件** |
+| `dsh-paper-workbench-0.2.4-sources.tar.gz` | 开发者源码，包含固定版本上游源码；按 `BUILD.md` 构建后才能安装 |
+| GitHub 自动生成的 `Source code (zip / tar.gz)` | 仓库源码快照；不能作为插件安装 |
+| `SHA256SUMS.txt` | 下载文件的校验值 |
+
 下载页同时提供 `SHA256SUMS.txt`。可运行 `Get-FileHash -Algorithm SHA256 "<安装包绝对路径>"`，与清单中的值比较。
+
+### 提示「这个包没有声明组合包」
+
+先看失败详情中的文件名。如果是 `*-sources.tar.gz` 或 `Source code`，重新下载并安装上面的 `.tgz`。源码仓库根目录是独立应用，插件声明 `dsh.bundle` 位于 `plugins/dsh-paper-workbench/package.json`；预构建安装包已经把它放到正确的包根目录，并带齐运行资源。给源码包改扩展名或只解压子目录都不能替代构建。
+
+这个错误发生在插件注册阶段。重新选对安装文件即可继续，无需重装 DSH 或删除论文资料库。如果正确 `.tgz` 仍报错，请在 [Issues](https://github.com/Cluodwaters/dsh-paper-workbench/issues) 附上 DSH 版本、Windows 架构和安装错误信息，勿附模型密钥或个人文献。
+
+## 界面预览
+
+以下为独立演示资料库的实际界面，文献、作者和摘要均为明确标注的合成示例。浏览器版使用普通顶栏；Windows 桌面版将导航合并到系统顶栏。
+
+![文献库：搜索、标签、阅读状态与文献信息](plugins/dsh-paper-workbench/assets/market/library-light.png)
+
+![论文阅读：PDF 与独立的 DSH AI 侧栏](plugins/dsh-paper-workbench/assets/market/reader-dark.png)
 
 ## 数据与会话
 
@@ -38,11 +63,11 @@
 
 **安装插件不会迁移或同步原设备的论文和聊天。** 完整迁移需要分别处理插件资料库及其关联的 DSH 会话；仅复制资料库不能恢复完整聊天。备份前应完整退出 DSH，再复制整个资料库目录。卸载插件不删除资料库。
 
-本仓库不包含个人论文、资料库、聊天记录、模型凭据、浏览器资料或本机验收截图。GitHub 的私有访问权限与软件的 AGPL 许可证分别保留。
+本仓库不包含个人论文、资料库、聊天记录、模型凭据或浏览器资料。公开截图仅使用合成演示资料；本机验收日志和个人资料始终不发布。
 
 ## 开发与架构
 
-这是包含插件与本地后台的完整源码仓库。源码中的独立应用版本为 0.3.2，DSH 插件版本为 0.2.1，两者版本号分别维护。
+这是包含插件与本地后台的完整源码仓库。源码中的独立应用版本为 0.3.2，DSH 插件版本为 0.2.4，两者版本号分别维护。
 
 | 路径 | 内容 |
 |---|---|
@@ -56,6 +81,7 @@
 - [插件使用、Agent 关系及上下文限制](plugins/dsh-paper-workbench/README.md)
 - [构建、测试与发布说明](BUILD.md)
 - [版本记录](CHANGELOG.md)
+- [插件市场收录材料](docs/marketplace/README.md)
 - [原独立应用说明](STANDALONE.md)
 - [架构](ARCHITECTURE.md) · [第三方归属](THIRD_PARTY_NOTICES.md)
 

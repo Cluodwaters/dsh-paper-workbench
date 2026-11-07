@@ -71,7 +71,7 @@ Pop-Location
 
 生成的 `plugins/dsh-paper-workbench/dsh-paper-workbench-<版本>.tgz` 不进入 Git 历史，作为 Release 附件发布。
 
-首次 Release 另附 `dsh-paper-workbench-0.2.0-sources.tar.gz`：包含该版本的仓库文件，以及按 `sources.download.json` 校验过的固定上游源码。npm 依赖仍按锁文件安装；无需把 `node_modules/` 提交到源码仓库。
+Release 另附 `dsh-paper-workbench-<版本>-sources.tar.gz`：包含对应运行代码的仓库文件，以及按 `sources.download.json` 校验过的固定上游源码。它是开发材料，不是可安装插件：根 `package.json` 没有 `dsh.bundle`，直接交给 DSH 会提示「这个包没有声明组合包」。npm 依赖仍按锁文件安装；无需把 `node_modules/` 提交到源码仓库。
 
 ## 独立安装验收
 
@@ -88,10 +88,10 @@ node plugins/dsh-paper-workbench/tools/verify-package.mjs --fixture "<合成测�
 
 ## 发布规则
 
-1. 修改插件版本和版本记录；保留源码与二进制所用上游版本、许可证及构建材料。
+1. 功能变化时修改插件版本和版本记录；保留源码与二进制所用上游版本、许可证及构建材料。只纠正下载入口、说明或市场展示时，可保留原版本及已验证的安装包哈希。
 2. 运行与变更相关的测试；打包依赖或运行时变化必须重新做源码目录外的验收。
 3. 检查 Git 暂存内容，排除个人文件、环境凭据和本机输出。
-4. 发布版本标签，将 `.tgz` 和 `SHA256SUMS.txt` 上传到同一 GitHub Release。
-5. 从 Release 重新下载，校对哈希；安装说明明确支持的平台及宿主版本。
+4. 发布版本标签，将 `.tgz`、对应源码和 `SHA256SUMS.txt` 上传到同一 GitHub Release。发布正文首行直链 `.tgz`；资产标签区分「Windows 插件安装包」和「开发者源码（不能直接安装）」。
+5. 从 Release 重新下载，校对哈希，检查安装包根目录的 `package.json` 含 `dsh.bundle.patch` 且对应 patch 文件存在，再用干净配置执行 `dsh plugin add`；安装说明明确支持的平台及宿主版本。
 
-首次托管保留已验证的 0.2.0 安装包，应用代码与该包一致。本次新增的是仓库说明、合成样本生成器和开发工具路径配置，不替换本机已经安装的插件。
+v0.2.4 的下载入口修正保留既有安装包、源码包、标签和 SHA-256，不重新打包运行代码。README、市场截图与收录材料随默认分支更新。

@@ -1,5 +1,7 @@
 # 文献工作台 · DeepSeek Harness 插件 0.2.4
 
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.4/dsh-paper-workbench-0.2.4.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
 进入工作台时自动收起 DSH 侧栏。在已验证的 Windows 桌面版中，工作台导航合并到原生顶栏，暂时隐藏 DSH 的新建会话、应用和编辑按钮，保留系统最小化、最大化和关闭控件。点击最左侧的侧栏图标「返回 DSH 上次会话」，会先确认当前页面已保存，再恢复原会话和宿主控件；未保存的编辑表单或保存失败会阻止返回。再次进入工作台保留论文、页码和 AI 侧栏设置。
@@ -68,13 +70,17 @@ flowchart LR
 
 ## 安装与构建
 
-宿主：DSH `0.2.2-rc.1`。插件自带 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。
+普通安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-0.2.4.tgz`，安装后完整退出并重新打开 DSH。下载公开，无需登录 GitHub。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
+
+宿主：DSH `0.2.2-rc.1`，已验证 Windows x64。插件自带 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。其他 DSH 版本尚未实测。
+
+以下命令仅用于开发者构建；前置依赖见仓库根目录 `BUILD.md`：
 
 ```powershell
 node plugins/dsh-paper-workbench/tools/package.mjs
 cd plugins/dsh-paper-workbench/dist
 npm pack --pack-destination .. --ignore-scripts
-dsh plugin --profile desktop add <dsh-paper-workbench-0.2.1.tgz 的绝对路径>
+dsh plugin --profile desktop add <dsh-paper-workbench-0.2.4.tgz 的绝对路径>
 ```
 
 `dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。通过官方插件管理安装后，从 DSH「应用 → 退出」完整退出再打开以加载新版本；关闭窗口可能仅隐藏到托盘。卸载插件不删除资料库。

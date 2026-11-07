@@ -10,7 +10,7 @@
  * OCR model pipeline.
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, rmSync, cpSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, cpSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -31,8 +31,11 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (value !== 'true') i += 1
 }
 
-const distRoot = path.resolve(args.dist || path.join(pluginRoot, 'dist'))
-if (!existsSync(path.join(distRoot, 'package.json'))) throw new Error(`No packaged bundle at ${distRoot}; run tools/package.mjs first`)
+const distInput = path.resolve(args.dist || path.join(pluginRoot, 'dist'))
+if (!existsSync(path.join(distInput, 'package.json'))) throw new Error(`No packaged bundle at ${distInput}; run tools/package.mjs first`)
+// pnpm installations expose a junction/symlink. Copy the actual package so the
+// outside-checkout verification cannot accidentally depend on that installation.
+const distRoot = realpathSync(distInput)
 mkdirSync(outDir, { recursive: true })
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-')
