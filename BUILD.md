@@ -94,4 +94,4 @@ node plugins/dsh-paper-workbench/tools/verify-package.mjs --fixture "<合成测�
 4. 发布版本标签，将 `.tgz`、对应源码和 `SHA256SUMS.txt` 上传到同一 GitHub Release。发布正文首行直链 `.tgz`；资产标签区分「Windows 插件安装包」和「开发者源码（不能直接安装）」。
 5. 从 Release 重新下载，校对哈希，检查安装包根目录的 `package.json` 含 `dsh.bundle.patch` 且对应 patch 文件存在，再用干净配置执行 `dsh plugin add`；安装说明明确支持的平台及宿主版本。
 
-v0.2.4 的下载入口修正保留既有安装包、源码包、标签和 SHA-256，不重新打包运行代码。README、市场截图与收录材料随默认分支更新。
+v0.2.4 的下载入口修正最初只更新说明。随后按用户要求在同一版本修订界面字体：这次需要重新打包 `.tgz`、对应源码并更新 SHA-256，版本标签应对应本次源码提交。已经安装旧包的设备需要重新下载、安装并完整重启 DSH；仅比较版本号不能判断是否包含这次修订。

@@ -6,7 +6,7 @@ body.direct-reader main > aside {
 }
 body.direct-reader header > div:first-child:after {
   content: " · PDF 阅读器";
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   color: var(--h-muted);
   margin-left: 12px;
 }
@@ -34,13 +34,13 @@ body.compact-reader .toolbar {
 body.compact-reader .document-title {
   flex: 1;
   width: auto;
-  font-size: 11px;
+  font-size: min(15px, var(--h-font-small, 11px));
   color: var(--h-muted);
 }
 body.compact-reader .toolbar .status {
   flex: 0 1 auto;
   max-width: 160px;
-  font-size: 11px;
+  font-size: min(15px, var(--h-font-small, 11px));
   color: var(--h-muted);
 }
 body.compact-reader .toolbar .status[data-state="failed"],
@@ -51,7 +51,8 @@ body.compact-reader .toolbar > button {
   flex-shrink: 0;
   height: 28px;
   padding: 3px 8px;
-  font-size: 11px;
+  font-size: min(15px, var(--h-font-control, 11px));
+  line-height: 1.35;
   border-radius: 6px;
 }
 #reader-tools-toggle::after {
@@ -96,7 +97,7 @@ body.compact-reader .toolbar > button {
   padding: 3px 8px;
   margin: 0;
   color: var(--h-muted);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
 }
 #reader-tools button {
   padding: 7px 8px;
@@ -105,7 +106,7 @@ body.compact-reader .toolbar > button {
   border-radius: 5px;
   background: transparent;
   color: var(--h-ink);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   text-align: left;
 }
 #reader-tools button:not(:disabled):hover {

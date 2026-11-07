@@ -32,13 +32,13 @@ dialog::backdrop {
   line-height: 1.8;
   background: var(--h-surface);
   padding: 16px;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
 }
 .dialog .text-view-toolbar select {
   padding: 6px;
 }
 .dialog .small {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .dialog .muted {
   color: var(--h-muted);

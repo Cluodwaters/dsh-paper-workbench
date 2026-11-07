@@ -9,7 +9,7 @@
   --amber: #946c26;
   --danger: #a34f42;
   font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-  font-size: 14px;
+  font-size: var(--h-font-body, 14px);
   color: var(--ink);
   background: var(--bg);
 }
@@ -19,7 +19,7 @@
   background: transparent;
   max-width: 105px;
   padding: 3px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .text-hit {
   display: block;
@@ -30,7 +30,7 @@
   color: var(--h-ink);
   text-decoration: none;
   line-height: 1.65;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .text-hit b {
   display: block;
@@ -65,7 +65,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--paper);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 button:hover:not(:disabled) {
   background: var(--h-raised);
@@ -107,7 +107,7 @@ textarea {
   border: 1px solid var(--h-soft);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   max-width: 100%;
 }
 input::placeholder,
@@ -142,7 +142,7 @@ h3 {
 }
 .small,
 small {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .muted {
   color: var(--muted);
@@ -158,7 +158,7 @@ small {
   border: 0;
   background: transparent;
   padding: 5px 2px;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--green);
 }
 .text-link {
@@ -167,7 +167,7 @@ small {
   padding: 0;
   color: var(--green);
   text-align: left;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.8;
 }
 .text-link:hover {
@@ -203,7 +203,7 @@ small {
   padding: 3px 7px;
   background: var(--h-raised);
   color: var(--h-muted);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
 }
 .badge.green {
   color: var(--h-ink);
@@ -232,13 +232,13 @@ small {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   margin: 10px 0;
 }
 .hint {
   padding: 11px 13px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   line-height: 1.8;
   margin: 14px 0;
   background: var(--h-raised);
@@ -302,7 +302,7 @@ small {
   padding: 0;
   flex: 1;
   width: 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   height: 100%;
 }
 .search-box input:focus-visible {
@@ -342,7 +342,7 @@ small {
   color: white;
   padding: 8px 9px;
   border-radius: 0 7px 7px 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   height: 36px;
   border-left: 1px solid var(--h-muted);
 }
@@ -374,7 +374,7 @@ small {
   scrollbar-color: var(--h-border) transparent;
 }
 .library-label {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   padding: 0 10px 18px;
 }
 .library-label strong {
@@ -394,7 +394,7 @@ small {
   background: transparent;
   border-radius: 7px;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .views button > span {
   font-size: 17px;
@@ -422,7 +422,7 @@ small {
   padding: 24px 6px 0;
 }
 .sidebar-section h2 {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   letter-spacing: 1.1px;
   color: var(--h-muted);
   font-weight: 600;
@@ -435,13 +435,13 @@ small {
   align-items: center;
 }
 .section-label > span {
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
   margin-bottom: 10px;
 }
 .sidebar-hint {
   color: var(--h-muted);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   line-height: 1.9;
   padding: 5px 4px 8px;
 }
@@ -457,7 +457,7 @@ small {
   border-radius: 6px;
   text-align: left;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -489,7 +489,7 @@ small {
   justify-content: space-between;
   list-style: none;
   padding: 12px 2px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   cursor: pointer;
 }
 .facet summary::-webkit-details-marker {
@@ -507,13 +507,13 @@ small {
 .facet summary span {
   margin-left: auto;
   color: var(--h-muted);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
 }
 .facet-search {
   width: 100%;
   margin: 0 0 7px;
   padding: 7px 8px;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   background: var(--h-surface);
 }
 .facet-options {
@@ -527,7 +527,7 @@ small {
   align-items: center;
   gap: 7px;
   padding: 5px 1px;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   line-height: 1.55;
   cursor: pointer;
 }
@@ -552,12 +552,12 @@ small {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   margin: 0 0 12px;
 }
 .small-select select {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 4px 6px;
   max-width: 130px;
 }
@@ -571,10 +571,10 @@ small {
   width: 0;
   flex: 1;
   padding: 7px 6px;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .year-range span {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .sidebar-bottom {
@@ -589,7 +589,7 @@ small {
   text-align: left;
   padding: 9px 2px;
   color: var(--h-muted);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .trash-link {
   display: flex;
@@ -603,7 +603,7 @@ small {
   border-top: 1px solid var(--line);
   margin-top: 13px;
   padding-top: 14px;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .library-main {
@@ -626,7 +626,7 @@ small {
   margin-top: 7px;
 }
 .result-number {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--h-muted);
   margin-left: 12px;
   white-space: nowrap;
@@ -641,7 +641,7 @@ small {
   justify-content: end;
 }
 .toolbar-actions button {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   padding: 7px 10px;
 }
 .filter-summary {
@@ -663,7 +663,7 @@ small {
   color: var(--h-ink);
   border: 0;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 4px 7px;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -673,7 +673,7 @@ small {
   margin-left: 3px;
 }
 .query-help {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--h-muted);
   line-height: 1.8;
 }
@@ -684,7 +684,7 @@ small {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .list-controls label {
@@ -696,7 +696,7 @@ small {
   border: 0;
   background: transparent;
   padding: 3px 0;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--h-muted);
 }
 .selection-bar {
@@ -710,12 +710,12 @@ small {
   flex-wrap: wrap;
 }
 .selection-bar > span {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   margin-right: 7px;
   color: var(--h-muted);
 }
 .selection-bar button {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 5px 8px;
 }
 .table-scroll {
@@ -728,7 +728,7 @@ small {
 .papers-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   text-align: left;
   table-layout: fixed;
 }
@@ -736,7 +736,7 @@ small {
   position: sticky;
   top: 0;
   background: var(--h-raised);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   font-weight: 500;
   letter-spacing: 0.4px;
   color: var(--h-muted);
@@ -775,7 +775,7 @@ small {
   background: var(--h-raised);
 }
 .paper-title {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.75;
   text-align: left;
   font-weight: 600;
@@ -798,7 +798,7 @@ small {
   text-underline-offset: 3px;
 }
 .paper-authors {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   margin-top: 4px;
   line-height: 1.6;
@@ -814,7 +814,7 @@ small {
   margin-top: 6px;
 }
 .row-tags > span {
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   line-height: 1.6;
   background: var(--h-raised);
   color: var(--h-muted);
@@ -838,7 +838,7 @@ small {
 }
 .papers-table .journal-cell {
   width: 125px;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   line-height: 1.7;
   overflow-wrap: anywhere;
@@ -846,12 +846,12 @@ small {
 .journal-cell small {
   display: block;
   color: var(--h-muted);
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   margin-top: 4px;
 }
 .reading-state {
   display: inline-block;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   border-radius: 4px;
   padding: 3px 5px;
   background: var(--h-raised);
@@ -867,7 +867,7 @@ small {
   color: #6f8693;
 }
 .read-link {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   text-decoration: none;
   color: var(--h-muted);
   white-space: nowrap;
@@ -877,7 +877,7 @@ small {
 }
 .open-cell small {
   display: block;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
   margin-top: 5px;
   white-space: nowrap;
@@ -897,7 +897,7 @@ small {
   font-weight: 500;
 }
 .empty-state p {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.9;
 }
 .list-footer {
@@ -908,7 +908,7 @@ small {
   align-items: center;
   gap: 10px;
   background: var(--h-surface);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .list-footer > div {
@@ -917,14 +917,14 @@ small {
   align-items: center;
 }
 .list-footer button {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 5px 9px;
 }
 .result-error {
   background: #faeae4;
   color: #a2654f;
   padding: 10px 20px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .details-panel {
   background: var(--paper);
@@ -943,7 +943,7 @@ small {
 }
 .detail-heading .eyebrow {
   display: block;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   letter-spacing: 1px;
 }
 .detail-heading strong {
@@ -967,7 +967,7 @@ small {
   background: transparent;
   padding: 9px 1px 11px;
   color: var(--h-muted);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .detail-tabs button.active {
   color: var(--green);
@@ -997,17 +997,17 @@ small {
   color: var(--h-ink);
 }
 .type-line {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   margin: 12px 0 22px;
 }
 .metadata-list {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.9;
 }
 .metadata-list dt {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   margin-top: 17px;
 }
@@ -1017,13 +1017,13 @@ small {
 }
 .metadata-list dd small {
   color: var(--h-muted);
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
 }
 .separator {
   color: var(--h-muted);
 }
 .detail-section-title {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   letter-spacing: 0.4px;
   color: var(--h-muted);
   margin: 25px 0 11px;
@@ -1044,7 +1044,7 @@ small {
   color: var(--h-muted);
   border: 0;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   border-radius: 5px;
 }
 .attachment-list {
@@ -1064,7 +1064,7 @@ small {
   background: var(--h-surface);
 }
 .attachment strong {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   font-weight: 500;
   line-height: 1.65;
   overflow-wrap: anywhere;
@@ -1072,12 +1072,12 @@ small {
 }
 .attachment small {
   display: block;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
   margin-top: 3px;
 }
 .attachment > span:last-child {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--h-muted);
 }
 .pdf-icon {
@@ -1098,12 +1098,12 @@ small {
   border-top: 1px solid var(--line);
 }
 .abstract summary {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   cursor: pointer;
   color: var(--h-muted);
 }
 .abstract p {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.95;
   color: var(--h-muted);
   margin-top: 13px;
@@ -1111,7 +1111,7 @@ small {
   overflow-wrap: anywhere;
 }
 .provenance {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
   line-height: 1.9;
   margin: 18px 0;
@@ -1133,7 +1133,7 @@ small {
   margin-bottom: 13px;
 }
 .detail-empty p {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 2;
 }
 .metadata-form {
@@ -1166,7 +1166,7 @@ small {
   margin-bottom: 17px;
 }
 .field > span {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .field > span b {
@@ -1174,7 +1174,7 @@ small {
   font-weight: 500;
 }
 .field > span small {
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   margin-left: 6px;
   color: var(--h-muted);
 }
@@ -1183,10 +1183,10 @@ small {
 .field > textarea {
   width: 100%;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .field > small {
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
   line-height: 1.8;
 }
@@ -1200,7 +1200,7 @@ small {
   flex: 1;
 }
 .inline-field button {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 5px 7px;
   white-space: nowrap;
 }
@@ -1225,7 +1225,7 @@ small {
   margin-right: 4px;
 }
 .author-head select {
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   padding: 4px;
   flex: 1;
   min-width: 0;
@@ -1233,14 +1233,14 @@ small {
   border: 0;
 }
 .author-head .icon-button {
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   padding: 2px 4px;
   min-height: 23px;
   color: var(--h-muted);
 }
 .author-row > input {
   width: 100%;
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   padding: 7px 8px;
 }
 .author-row .field-pair {
@@ -1248,12 +1248,12 @@ small {
 }
 .author-row .field-pair input {
   width: 100%;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   padding: 6px;
 }
 .orcid {
   margin-top: 7px;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
 }
 .orcid summary {
@@ -1261,7 +1261,7 @@ small {
 }
 .orcid input {
   width: 100%;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   margin-top: 7px;
   padding: 6px;
 }
@@ -1271,7 +1271,7 @@ small {
   padding-top: 15px;
 }
 .more-fields > summary {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--h-muted);
   cursor: pointer;
   margin-bottom: 17px;
@@ -1279,7 +1279,7 @@ small {
 .more-fields > p {
   margin-bottom: 15px;
   line-height: 1.9;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
 }
 .editor-footer {
   border-top: 1px solid var(--line);
@@ -1288,7 +1288,7 @@ small {
 }
 .editor-footer > span {
   display: block;
-  font-size: 9px;
+  font-size: var(--h-font-caption, 9px);
   color: var(--h-muted);
   margin-bottom: 9px;
 }
@@ -1298,7 +1298,7 @@ small {
   gap: 8px;
 }
 .editor-footer button {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   padding: 7px 12px;
 }
 .form-error {
@@ -1306,7 +1306,7 @@ small {
   border-radius: 6px;
   background: #fae9e3;
   color: #a05a46;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.8;
 }
 .dialog {
@@ -1346,11 +1346,11 @@ small {
 .dialog-content {
   padding: 23px 25px;
   overflow: auto;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   line-height: 1.9;
 }
 .dialog-hint {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   color: var(--h-muted);
   line-height: 1.95;
   margin-bottom: 20px;
@@ -1367,12 +1367,12 @@ small {
   margin: 0 25px 15px;
 }
 .dialog .field > span {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   color: var(--h-muted);
 }
 .dialog .field input,
 .dialog .field select {
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   padding: 10px 11px;
 }
 .alias-row {
@@ -1382,7 +1382,7 @@ small {
   gap: 12px;
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .alias-row > div {
   display: flex;
@@ -1413,7 +1413,7 @@ small {
 .candidate-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   text-align: left;
   min-width: 520px;
 }
@@ -1431,7 +1431,7 @@ small {
   max-width: 260px;
 }
 .candidate-table small {
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
   color: var(--h-muted);
 }
 .import-progress {
@@ -1446,7 +1446,7 @@ small {
   accent-color: var(--green);
 }
 .import-progress span {
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   color: var(--h-muted);
   overflow-wrap: anywhere;
 }
@@ -1458,7 +1458,7 @@ small {
 .import-results p {
   border-top: 1px solid var(--line);
   padding: 12px 0;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .import-results strong {
   display: block;
@@ -1468,7 +1468,7 @@ small {
 .import-results span {
   display: block;
   color: var(--h-muted);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   margin-top: 4px;
 }
 .drop-cover {
@@ -1491,7 +1491,7 @@ small {
   color: var(--green);
 }
 .drop-cover p {
-  font-size: 14px;
+  font-size: var(--h-font-body, 14px);
   color: var(--h-muted);
   margin-top: 15px;
 }
@@ -1505,7 +1505,7 @@ small {
   padding: 12px 20px;
   border-radius: 8px;
   box-shadow: 0 9px 30px color-mix(in srgb, var(--h-ink) 13%, transparent);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   max-width: min(600px, 90vw);
   z-index: 100;
 }
@@ -1526,10 +1526,10 @@ small {
     width: 165px;
   }
   .paper-title {
-    font-size: 14px;
+    font-size: var(--h-font-body, 14px);
   }
   .paper-authors {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
   }
   .papers-table td {
     padding-top: 18px;
@@ -1541,7 +1541,7 @@ small {
   .field > input,
   .field > select,
   .field > textarea {
-    font-size: 13px;
+    font-size: var(--h-font-body, 13px);
   }
   .sidebar {
     padding-left: 18px;
@@ -1578,7 +1578,7 @@ small {
     margin-left: 7px;
   }
   .toolbar-actions button {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
   }
   .filter-summary,
   .list-controls {
@@ -1589,10 +1589,10 @@ small {
     padding: 18px;
   }
   .row-tags span {
-    font-size: 8px;
+    font-size: var(--h-font-caption, 8px);
   }
   .paper-title {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
   }
   .papers-table td {
     padding-left: 7px;
@@ -1606,7 +1606,7 @@ small {
     gap: 7px;
   }
   .header-actions button {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
     padding: 8px 9px;
   }
 }
@@ -1640,10 +1640,10 @@ small {
     font-size: 24px;
   }
   .paper-title {
-    font-size: 13px;
+    font-size: var(--h-font-body, 13px);
   }
   .paper-authors {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
   }
   .app-header {
     gap: 18px;
@@ -1678,13 +1678,13 @@ small {
     gap: 7px;
   }
   .search-box input {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
   }
   .search-box > span {
     font-size: 20px;
   }
   .header-actions .primary {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
     padding: 8px;
   }
   .import-menu summary {
@@ -1725,11 +1725,11 @@ small {
     gap: 6px;
   }
   .toolbar-actions button {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
     padding: 6px 8px;
   }
   .result-number {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
   }
   .papers-table .journal-cell {
     width: 92px;
@@ -1745,10 +1745,10 @@ small {
     width: 49px;
   }
   .paper-title {
-    font-size: 12px;
+    font-size: var(--h-font-control, 12px);
   }
   .paper-authors {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
   }
   .list-footer {
     padding: 10px 13px;
@@ -1794,10 +1794,10 @@ small {
   }
   .header-actions .primary {
     padding: 7px;
-    font-size: 9px;
+    font-size: var(--h-font-caption, 9px);
   }
   .search-box input {
-    font-size: 10px;
+    font-size: var(--h-font-caption, 10px);
   }
   .search-box {
     height: 32px;
@@ -1818,13 +1818,13 @@ small {
     padding-bottom: 13px;
   }
   .paper-title {
-    font-size: 11px;
+    font-size: var(--h-font-small, 11px);
   }
   .papers-table .year-cell {
     width: 35px;
   }
   .papers-table th {
-    font-size: 9px;
+    font-size: var(--h-font-caption, 9px);
     padding-left: 6px;
     padding-right: 6px;
   }
@@ -1836,7 +1836,7 @@ small {
     align-items: center;
   }
   .selection-bar button {
-    font-size: 9px;
+    font-size: var(--h-font-caption, 9px);
   }
   .field-pair {
     gap: 7px;

@@ -25,7 +25,7 @@
 .offline-label {
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .tools-main {
   max-width: 1320px;
@@ -62,7 +62,7 @@
 }
 .metric span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
 }
 .tool-card {
   background: var(--paper);
@@ -76,7 +76,7 @@
   font-size: 17px;
 }
 .tool-card h3 {
-  font-size: 14px;
+  font-size: var(--h-font-body, 14px);
   margin-top: 24px;
 }
 .tool-card p {
@@ -111,13 +111,13 @@
 }
 .index-name {
   word-break: break-word;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   line-height: 1.5;
 }
 .index-row small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   margin-top: 4px;
 }
 .index-row .button-group {
@@ -125,7 +125,7 @@
 }
 .index-row button,
 .index-row a {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .index-row a {
   color: var(--green);
@@ -190,7 +190,7 @@
 }
 .cite-result strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   line-height: 1.5;
 }
 .cite-result small {
@@ -226,7 +226,7 @@
   margin-top: 9px;
 }
 .chosen-cite label {
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
   color: var(--muted);
 }
 .citation-preview {
@@ -238,7 +238,7 @@
 .bibliography-preview {
   white-space: pre-wrap;
   line-height: 1.8;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
   max-height: 380px;
   overflow: auto;
   margin: 14px 0;
@@ -247,7 +247,7 @@
   background: #fff4dd;
   padding: 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--h-font-control, 12px);
   line-height: 1.7;
   color: #856024;
 }
@@ -258,7 +258,7 @@
   line-height: 1.85;
   background: var(--h-surface);
   padding: 16px;
-  font-size: 13px;
+  font-size: var(--h-font-body, 13px);
 }
 .text-view-toolbar {
   display: flex;

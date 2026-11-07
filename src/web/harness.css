@@ -19,7 +19,38 @@
   color-scheme: light;
   color: var(--h-ink);
   background: var(--h-raised);
-  font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-family: var(--h-font-family, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif);
+}
+/* The original standalone sizes remain CSS fallbacks. Embedded pages use a
+   readable scale shared by library, forms, tools and the reader's outer shell. */
+:root[data-harness="true"] {
+  --h-font-size: 15px;
+  --h-font-caption: max(12px, calc(var(--h-font-size) - 3px));
+  --h-font-small: max(13px, calc(var(--h-font-size) - 2px));
+  --h-font-control: max(14px, calc(var(--h-font-size) - 1px));
+  --h-font-body: var(--h-font-size);
+  --h-font-title: calc(var(--h-font-size) + 1px);
+  font-size: var(--h-font-body);
+}
+:root[data-harness="true"] body {
+  line-height: 1.55;
+}
+:root[data-harness="true"] .paper-title {
+  font-size: var(--h-font-title);
+  line-height: 1.6;
+}
+:root[data-harness="true"] :is(.paper-authors, .papers-table .journal-cell) {
+  font-size: var(--h-font-small);
+}
+:root[data-harness="true"] :is(.eyebrow, .views button b, .facet-options small,
+  .papers-table .year-cell, .detail-section-title span, .author-head > span) {
+  font-family: inherit;
+  font-size: var(--h-font-small);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-harness="true"] :is(.pdf-icon, .search-box kbd) {
+  font-family: inherit;
+  font-size: var(--h-font-caption);
 }
 :root[data-theme="dark"] {
   --h-ink: #eceef2;
@@ -126,6 +157,18 @@ header {
 .harness-embedded .sidebar {
   width: 190px;
 }
+.harness-embedded .section-label {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.harness-embedded .section-label > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.harness-embedded .papers-table th:nth-child(5) {
+  width: calc(4 * var(--h-font-caption) + 24px);
+  white-space: nowrap;
+}
 .harness-embedded .library-toolbar h1 {
   font-family: inherit;
   font-size: 24px;
@@ -191,7 +234,7 @@ header {
   padding: 7px 15px;
   background: var(--h-surface);
   border-bottom: 1px solid var(--h-border);
-  font-size: 11px;
+  font-size: var(--h-font-small, 11px);
 }
 .harness-ai-tools > span {
   margin-right: 5px;
@@ -204,7 +247,7 @@ header {
 .harness-ai-tools small {
   color: var(--h-muted);
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--h-font-caption, 10px);
 }
 @media (max-width: 900px) {
   .harness-embedded .search-box kbd,
