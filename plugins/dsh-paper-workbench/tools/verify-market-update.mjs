@@ -14,6 +14,11 @@ for (const key of ['market', 'profile-dir', 'expect-current', 'expect-latest', '
 assert.ok(['true', 'false'].includes(args['expect-update']), '--expect-update must be true or false')
 const market = path.resolve(args.market)
 const profile = path.resolve(args['profile-dir'])
+const { setActiveRegion, activeRegion } = await import(pathToFileURL(path.join(market, 'lib/regions.js')))
+if (args.region) {
+  assert.ok(['global', 'china'].includes(args.region), '--region must be global or china')
+  setActiveRegion(args.region)
+}
 const require = createRequire(path.join(market, 'package.json'))
 const { load } = require('js-yaml')
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
@@ -45,6 +50,7 @@ assert.equal(release?.target, `https://github.com/Cluodwaters/dsh-paper-workbenc
 const report = {
   passed: true,
   marketVersion: JSON.parse(readFileSync(path.join(market, 'package.json'), 'utf8')).version,
+  region: activeRegion(),
   catalog: 'proposed local entry, not evidence of public market indexing',
   installedSource: spec, releaseSource: source, release, update: actual,
 }
