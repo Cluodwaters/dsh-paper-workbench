@@ -616,13 +616,11 @@ async function main() {
     })
 
     await step('Switching main panels and returning restores the reading view', async () => {
-      // Another shipped sidebar panel replaces the main panel, unmounting this page.
+      // The visible return control flushes the reader before restoring DSH.
       await evaluate(
         session,
         `(() => {
-          const label = (node) => [node.getAttribute('aria-label'), node.getAttribute('title'), node.textContent].filter(Boolean).join(' ')
-          const candidates = [...document.querySelectorAll('button, a')].filter((node) => /插件|Plugins/u.test(label(node)))
-          const button = candidates.find((node) => !/文献工作台|Paper Workbench/u.test(label(node)))
+          const button = document.querySelector('.pw-return')
           if (!button) return false
           button.click()
           return true

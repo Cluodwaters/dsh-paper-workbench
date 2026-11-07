@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useCallback, useEffect, useMemo, useRef, useState } = React
+    const { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } = React
     const NS = 'paper-workbench'
     const BASE = '/paper-workbench'
     const SESSION_STORE = 'dsh.paper-workbench.sessions.v1'
@@ -25,6 +25,9 @@ window.__ModuleLoader__.load({
     const zh = {
       'panel.title': '文献工作台',
       'page.title': '文献工作台',
+      'nav.return': '返回 DSH 上次会话',
+      'nav.returning': '正在保存并返回 DSH…',
+      'notice.returnFailed': '暂未返回 DSH，当前页面已保留：{message}',
       'nav.library': '文献库',
       'nav.reader': '阅读',
       'nav.tools': '工具',
@@ -86,6 +89,9 @@ window.__ModuleLoader__.load({
     const en = {
       'panel.title': 'Paper Workbench',
       'page.title': 'Paper Workbench',
+      'nav.return': 'Return to the previous DSH conversation',
+      'nav.returning': 'Saving and returning to DSH…',
+      'notice.returnFailed': 'The current page stays open; could not return to DSH: {message}',
       'nav.library': 'Library',
       'nav.reader': 'Reading',
       'nav.tools': 'Tools',
@@ -304,6 +310,81 @@ window.__ModuleLoader__.load({
       return `pw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
     }
 
+    /**
+     * DSH 0.2.2-rc.1 shell adapter. Navigation uses the public layout service.
+     * Windows has no replaceable caption slot: temporarily mark the observed
+     * shell containers, leaving the preload menu and native window buttons intact.
+     * No generated class names, React internals or host source patches are used.
+     */
+    function enterFocusShell(root, layout) {
+      const main = root.closest('[data-global-panel]')
+      const center = main?.parentElement
+      const frame = center?.parentElement
+      const toggle = frame?.querySelector('[data-sidebar-toggle]')
+      const sidebar = toggle && [...frame.children].find(node => node.contains(toggle))
+      if (!main || !sidebar || !frame.querySelector(':scope > [data-shell-overlay]')) {
+        // Retain ordinary navigation when a future Host changes its shell shape.
+        return () => {}
+      }
+      const owner = randomRequestId()
+      const marks = []
+      const mark = (element, name) => {
+        marks.push([element, name, element.getAttribute(name)])
+        element.setAttribute(name, owner)
+      }
+      const wasExpanded = !frame.hasAttribute('data-sidebar-collapsed')
+      const wasNarrow = innerWidth < 1024
+      const focusedInSidebar = sidebar.contains(document.activeElement)
+      mark(document.documentElement, 'data-pw-focus')
+      mark(frame, 'data-pw-shell')
+      mark(main, 'data-pw-main')
+      mark(center, 'data-pw-center')
+      mark(sidebar, 'data-pw-host-sidebar')
+      let disposed = false
+      let collapseFrame = 0
+      const collapse = () => {
+        cancelAnimationFrame(collapseFrame)
+        collapseFrame = requestAnimationFrame(() => {
+          if (!disposed && !frame.hasAttribute('data-sidebar-collapsed')) layout.toggleSidebar()
+        })
+      }
+      // Keep the native collapse state in sync even after a resize/shortcut.
+      const observer = new MutationObserver(collapse)
+      observer.observe(frame, { attributes: true, attributeFilter: ['data-sidebar-collapsed'] })
+      collapse()
+      const overlay = navigator.windowControlsOverlay
+      const setCaptionSpace = () => {
+        const rect = overlay?.visible ? overlay.getTitlebarAreaRect() : null
+        const fullscreen = document.documentElement.hasAttribute('data-fullscreen')
+        const right = fullscreen ? 0 : rect?.width > 0 ? Math.max(0, innerWidth - rect.right) : 138
+        root.style.setProperty('--pw-caption-right', `${right}px`)
+      }
+      const fullscreenObserver = new MutationObserver(setCaptionSpace)
+      fullscreenObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-fullscreen'] })
+      overlay?.addEventListener('geometrychange', setCaptionSpace)
+      window.addEventListener('resize', setCaptionSpace)
+      setCaptionSpace()
+      if (focusedInSidebar) root.querySelector('.pw-return')?.focus({ preventScroll: true })
+      return () => {
+        disposed = true
+        cancelAnimationFrame(collapseFrame)
+        observer.disconnect()
+        fullscreenObserver.disconnect()
+        overlay?.removeEventListener('geometrychange', setCaptionSpace)
+        window.removeEventListener('resize', setCaptionSpace)
+        root.style.removeProperty('--pw-caption-right')
+        for (const [element, name, previous] of marks.reverse()) {
+          if (element.getAttribute(name) !== owner) continue
+          if (previous === null) element.removeAttribute(name)
+          else element.setAttribute(name, previous)
+        }
+        // Respect responsive collapse if the window crossed the narrow breakpoint.
+        const restoreExpanded = wasExpanded && (wasNarrow === (innerWidth < 1024) || innerWidth >= 1024)
+        if (frame.isConnected && !frame.hasAttribute('data-sidebar-collapsed') !== restoreExpanded)
+          layout.toggleSidebar()
+      }
+    }
+
     function createStyles() {
       return `
 .pw-root { display:flex; flex-direction:column; height:100%; min-height:0; min-width:0; background:var(--dsw-alias-bg-base); color:var(--dsw-alias-label-primary); font-size:13px; line-height:1.5; }
@@ -371,6 +452,37 @@ window.__ModuleLoader__.load({
 .pw-locate { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .pw-locate .pw-input { max-width:76px; }
 .pw-footer-note { padding:6px 12px; color:var(--dsw-alias-label-secondary); font-size:11px; border-top:1px solid var(--dsw-alias-border-l1); }
+html[data-pw-focus] [data-pw-shell] { grid-template-columns:0 minmax(0,1fr) 0 !important; }
+html[data-pw-focus] [data-pw-host-sidebar], html[data-pw-focus] [data-shell-leading], html[data-pw-focus] [data-windows-menu] { display:none !important; }
+html[data-pw-focus] [data-pw-main] { padding-top:0 !important; }
+html[data-pw-focus] [data-pw-center] { border-radius:0 !important; }
+.pw-header .pw-return { width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pw-header > *, .pw-tabs { flex-shrink:0; }
+.pw-jobs-short { display:none; }
+.pw-root > .pw-notice { flex-shrink:0; margin:6px 10px; }
+html[data-pw-focus][data-windows-titlebar] .pw-header { position:fixed; top:0; left:0; right:var(--pw-caption-right,138px); z-index:16; height:var(--dsh-windows-titlebar-height,40px); gap:8px; padding:0 10px; border-bottom:0; background:var(--dsw-specific-sidebar-fill); -webkit-app-region:drag; }
+html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus][data-windows-titlebar] .pw-header nav { -webkit-app-region:no-drag; }
+@media (max-width:1000px) {
+  .pw-header { gap:6px; padding-inline:8px; }
+  .pw-header .pw-status { width:28px; height:28px; padding:0; justify-content:center; }
+  .pw-status-label { display:none; }
+  .pw-header .pw-tabs { margin-left:0; }
+  .pw-header .pw-tab { padding-inline:7px; }
+}
+@media (max-width:760px) {
+  .pw-header .pw-brand-label, .pw-jobs-full { display:none; }
+  .pw-jobs-short { display:inline; }
+  .pw-header .pw-brand { gap:0; }
+  .pw-header .pw-spacer { min-width:0; }
+  html[data-pw-focus][data-windows-titlebar] .pw-header { gap:4px; padding-inline:6px; }
+}
+@media (max-width:520px) {
+  .pw-header .pw-brand { display:none; }
+  .pw-header .pw-tab { padding-inline:5px; }
+  .pw-header .pw-status { width:22px; }
+  .pw-header .pw-button { padding-inline:5px; font-size:11px; }
+  .pw-header { gap:3px; padding-inline:4px; }
+}
 `
     }
 
@@ -454,6 +566,15 @@ window.__ModuleLoader__.load({
       function PaperPage(props) {
         useLocaleRevision()
         const colorScheme = useColorScheme()
+        const rootRef = useRef(null)
+        const pageMountedRef = useRef(false)
+        const [returning, setReturning] = useState(false)
+        const returningRef = useRef(false)
+        useLayoutEffect(() => {
+          pageMountedRef.current = true
+          const leave = enterFocusShell(rootRef.current, ctx.layout)
+          return () => { pageMountedRef.current = false; navSeqRef.current++; leave() }
+        }, [])
         const SessionProvider = props.SessionProvider
         const renderSlot = props.renderSlot
         const useWorkspaces = props.useWorkspaces
@@ -778,6 +899,7 @@ window.__ModuleLoader__.load({
 
         const openView = useCallback(
           async (next) => {
+            if (returningRef.current) return
             const target = {
               view: next.view === 'reader' ? 'reader' : next.view === 'tools' ? 'tools' : 'library',
               attachmentId: next.attachmentId,
@@ -818,6 +940,34 @@ window.__ModuleLoader__.load({
           },
           [frameSrc, sendCommand, showNotice, t],
         )
+
+        const returnToHarness = useCallback(async () => {
+          if (returningRef.current) return
+          returningRef.current = true
+          setReturning(true)
+          const seq = ++navSeqRef.current
+          try {
+            if (frameReadyRef.current) {
+              const flushed = await sendCommand('flush', undefined, 20000)
+              if (!flushed?.ok) throw new Error(flushed?.error?.message || '保存尚未完成')
+              if (viewRef.current === 'reader') {
+                const current = await sendCommand('context', undefined, 4000)
+                if (current?.ok && current.value?.attachmentId === targetRef.current.attachmentId)
+                  targetRef.current = { ...targetRef.current, pageIndex: current.value.pageIndex }
+              }
+            }
+            if (!pageMountedRef.current || seq !== navSeqRef.current) return
+            writeViewStore(targetRef.current)
+            // Embedded paper references never replace the mainView reference.
+            // The public null panel selection restores that exact DSH conversation.
+            ctx.layout.selectPanel(null)
+          } catch (error) {
+            if (pageMountedRef.current) showNotice(format(t('notice.returnFailed'), { message: error?.message || String(error) }))
+          } finally {
+            returningRef.current = false
+            if (pageMountedRef.current) setReturning(false)
+          }
+        }, [sendCommand, showNotice, t])
 
         const releaseSession = useCallback(() => {
           sessionRef.current = null
@@ -1372,12 +1522,19 @@ window.__ModuleLoader__.load({
 
         return h(
           'div',
-          { className: 'pw-root' },
+          { className: 'pw-root', ref: rootRef },
           h('style', null, createStyles()),
           h(
             'header',
             { className: 'pw-header' },
-            h('div', { className: 'pw-brand' }, h(PaperIcon, { size: 20, active: true }), t('page.title')),
+            h('button', {
+              type: 'button', className: 'pw-button pw-return', disabled: returning,
+              title: t(returning ? 'nav.returning' : 'nav.return'), 'aria-label': t(returning ? 'nav.returning' : 'nav.return'),
+              onClick: () => void returnToHarness(),
+            }, h('svg', { width:18, height:18, viewBox:'0 0 24 24', fill:'none', 'aria-hidden':'true' },
+              h('rect', { x:3.5, y:4, width:17, height:16, rx:1.5, stroke:'currentColor', strokeWidth:1.5 }),
+              h('path', { d:'M9 4v16', stroke:'currentColor', strokeWidth:1.5 }))),
+            h('div', { className: 'pw-brand', title:t('page.title') }, h(PaperIcon, { size: 20, active: true }), h('span', { className:'pw-brand-label' }, t('page.title'))),
             h(
               'nav',
               { className: 'pw-tabs', 'aria-label': t('page.title') },
@@ -1414,7 +1571,9 @@ window.__ModuleLoader__.load({
               ),
             ),
             h('div', { className: 'pw-spacer' }),
-            h('button',{type:'button',className:'pw-button',onClick:()=>setJobsOpen(v=>!v)},`初读与任务${agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''}`),
+            h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>setJobsOpen(v=>!v)},
+              h('span',{className:'pw-jobs-full'},'初读与任务'),h('span',{className:'pw-jobs-short'},'任务'),
+              agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''),
             h(
               'button',
               {
@@ -1422,10 +1581,11 @@ window.__ModuleLoader__.load({
                 className: 'pw-status',
                 'data-phase': backendReady ? 'ready' : phase,
                 title: statusError || (status && status.error) || statusText,
+                'aria-label': statusError || statusText,
                 onClick: () => setShowDiagnostics((value) => !value),
               },
               h('span', { className: 'pw-dot', 'aria-hidden': 'true' }),
-              statusText,
+              h('span', { className:'pw-status-label' }, statusText),
             ),
             h(
               'button',
@@ -1439,6 +1599,7 @@ window.__ModuleLoader__.load({
               aiOpen ? t('ai.close') : t('ai.open'),
             ),
           ),
+          notice ? h('div', { className: 'pw-notice', role: 'alert' }, notice) : null,
           jobsOpen ? h('div',{style:{padding:'10px 16px',maxHeight:'240px',overflow:'auto',borderBottom:'1px solid var(--dsw-alias-border-l1)',fontSize:'12px'}},
             h('p',null,'新导入论文会自动建立独立会话并初读全文，使用 DSH 当前默认模型。扫描页自动提取 OCR；无法识别和图表细节会列为待核查。'),
             agentJobs.length?agentJobs.map(job=>h('div',{key:job.id,style:{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',padding:'6px 0'}},
@@ -1715,7 +1876,6 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'pw-panel-body' },
-                notice ? h('div', { className: 'pw-notice', role: 'alert' }, notice) : null,
                 aiScope==='paper' && !paper
                   ? h(
                       'div',
@@ -1796,7 +1956,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces'],
+      inject: ['slots', 'locale', 'sessions', 'theme', 'workspaces', 'layout'],
       apply(ctx) {
         ctx.effect(
           () => {
