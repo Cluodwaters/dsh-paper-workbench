@@ -67,7 +67,7 @@ npm pack --pack-destination .. --ignore-scripts
 Pop-Location
 ```
 
-`stage-desktop.mjs` 编译 Word 连接器并按 npm 的生产依赖图收集外部依赖。插件打包脚本组合最新 `src/`、固定 Reader/OCR 资源、运行时和许可证，并生成文件哈希记录。必须在 `dist` 目录里运行 `npm pack`，避免误打包根工程。
+`stage-desktop.mjs` 编译 Word 连接器并按 npm 的生产依赖图收集外部依赖。插件打包脚本组合最新 `src/`、固定 Reader/OCR 资源、运行时和许可证，并生成完整 `RUNTIME-MANIFEST.json` 文件哈希清单。安装后运行文件复制到 DSH 用户目录中的独立缓存，启动前校验；不得改回从安装目录启动或使用硬链接，否则 Windows 覆盖升级会再次锁住安装包。必须在 `dist` 目录里运行 `npm pack`，避免误打包根工程。
 
 插件 Host 的原生设置使用固定版本 `@deepseek-ai/schemastery`，由根项目 `npm ci` 安装，打包时连同 `@deepseek-ai/cosmokit`、`@standard-schema/spec` 及许可证显式复制并捆绑。独立验收同时检查这些 Host 依赖和后台生产依赖，避免安装后依赖源码目录。
 

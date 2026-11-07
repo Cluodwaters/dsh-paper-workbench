@@ -25,6 +25,7 @@ import { homedir } from 'node:os'
 import { createAgentCoordinator } from './agents.js'
 import z from '@deepseek-ai/schemastery'
 import { migrateStorageLocation, prepareStorageLocation, sameLocation } from './storage-location.js'
+import { inside, prepareRuntime, readRuntimeManifest, defaultRuntimeCacheRoot } from './runtime-cache.js'
 
 const BASE_PATH = '/paper-workbench'
 const MIN_NODE = [25, 8, 1]
@@ -317,6 +318,10 @@ function createSupervisor(ctx, options) {
   let stopping = false
   let restartTimer = null
   let rotating = false
+  let starting = null
+  let stoppingTask = null
+  let runtime = null
+  let runtimeProgress = null
   const token = randomBytes(32).toString('hex')
 
   const dataRoot = path.resolve(options.dataRoot || defaultDataRoot())
@@ -376,6 +381,8 @@ function createSupervisor(ctx, options) {
       activeDataRoot: storageReady ? dataRoot : options.storageLocation.from,
       storageProgress,
       backendRoot: options.backendRoot,
+      runtimeCache: runtime,
+      runtimeProgress,
       node: state.node,
       integration: state.integration,
       attempts: state.attempts,
@@ -450,7 +457,8 @@ function createSupervisor(ctx, options) {
     restartTimer.unref?.()
   }
 
-  function handleExit(code, signal) {
+  function handleExit(process, code, signal) {
+    if (child !== process) return
     state.pid = null
     child = null
     if (stopping) return
@@ -467,27 +475,35 @@ function createSupervisor(ctx, options) {
     }
   }
 
-  function killChild() {
+  async function killChild() {
     const current = child
     if (!current) return
     const pid = current.pid
-    try {
-      current.kill()
-    } catch {
-      /* already gone */
-    }
-    const timer = setTimeout(() => {
-      try {
-        if (current.exitCode === null) current.kill('SIGKILL')
-      } catch {
-        /* already gone */
-      }
-    }, 4000)
-    timer.unref?.()
     appendLog(`[harness] stopping local backend (pid ${String(pid)})`)
+    if (!pid || current.exitCode !== null || current.signalCode !== null) return
+    await new Promise((resolve, reject) => {
+      const done = error => {
+        clearTimeout(forceTimer)
+        clearTimeout(deadline)
+        current.off('exit', onExit)
+        error ? reject(error) : resolve()
+      }
+      const onExit = () => done()
+      const forceTimer = setTimeout(() => {
+        try { current.kill('SIGKILL') } catch { /* wait for the exit event */ }
+      }, 4000)
+      const deadline = setTimeout(() => done(new Error('本地服务未能停止，请稍后重试')), 12000)
+      current.once('exit', onExit)
+      try { current.kill() } catch (error) { done(error) }
+    })
   }
 
-  async function start() {
+  function start() {
+    if (!starting) starting = startBackend().finally(() => { starting = null })
+    return starting
+  }
+
+  async function startBackend() {
     if (stopping) return
     if (state.ready) return
     state.phase = 'starting'
@@ -495,6 +511,18 @@ function createSupervisor(ctx, options) {
     state.ready = false
     state.integration = null
     try {
+      if (options.runtimeBundle && !runtime) {
+        runtime = await prepareRuntime({
+          ...options.runtimeBundle,
+          signal: storageAbort.signal,
+          progress: value => { runtimeProgress = value },
+        })
+        const resourceRoot = path.join(options.runtimeBundle.pluginRoot, 'resources')
+        if (inside(options.backendRoot, resourceRoot)) options.backendRoot = path.join(runtime.root, path.relative(resourceRoot, options.backendRoot))
+        if (options.nodeExecutable && inside(options.nodeExecutable, resourceRoot)) options.nodeExecutable = path.join(runtime.root, path.relative(resourceRoot, options.nodeExecutable))
+        options.bundledNodeExecutable = runtime.nodeExecutable
+      }
+      if (stopping) return
       state.node = detectNode(options.nodeExecutable, options.bundledNodeExecutable)
       if (!state.node.ok) throw new Error(state.node.error)
       if (!isFile(path.join(options.backendRoot, 'src', 'server', 'main.mjs'))) {
@@ -546,26 +574,31 @@ function createSupervisor(ctx, options) {
         appendLog(`[harness] spawn error: ${error.message}`)
         fail(error)
       })
-      spawned.on('exit', (code, signal) => handleExit(code, signal))
+      spawned.on('exit', (code, signal) => handleExit(spawned, code, signal))
       await waitReady(Date.now() + Math.max(5000, Number(options.startupTimeoutMs) || 120000))
     } catch (error) {
-      fail(error)
-      if (child) killChild()
+      if (!stopping) fail(error)
+      if (child) await killChild()
     }
   }
 
-  async function stop() {
+  function stop() {
+    if (!stoppingTask) stoppingTask = stopBackend()
+    return stoppingTask
+  }
+
+  async function stopBackend() {
     stopping = true
     storageAbort.abort()
+    await starting?.catch(() => {})
     await preparingStorage?.catch(() => {})
     if (restartTimer) {
       clearTimeout(restartTimer)
       restartTimer = null
     }
-    killChild()
+    await killChild()
     state.ready = false
     state.phase = 'stopped'
-    await sleep(50)
     try {
       logStream?.end()
     } catch {
@@ -575,6 +608,7 @@ function createSupervisor(ctx, options) {
   }
 
   async function restart() {
+    if (stoppingTask) return
     appendLog('[harness] manual restart requested')
     stopping = true
     if (restartTimer) {
@@ -584,8 +618,9 @@ function createSupervisor(ctx, options) {
     state.ready = false
     state.phase = 'starting'
     state.attempts = 0
-    killChild()
-    await sleep(400)
+    await starting?.catch(() => {})
+    await killChild()
+    if (stoppingTask) return
     stopping = false
     await start()
   }
@@ -942,6 +977,11 @@ export function apply(ctx, rawConfig) {
   const initialLocation = storageConfig(config)
   const supervisor = createSupervisor(ctx, {
     backendRoot,
+    runtimeBundle: isFile(path.join(bundledBackend, 'src', 'server', 'main.mjs')) ? {
+      pluginRoot,
+      manifest: readRuntimeManifest(pluginRoot),
+      cacheRoot: defaultRuntimeCacheRoot(),
+    } : undefined,
     dataRoot: initialLocation?.to || (config.dataRoot ? path.resolve(String(config.dataRoot)) : undefined),
     storageLocation: initialLocation,
     nodeExecutable: config.nodeExecutable ? path.resolve(String(config.nodeExecutable)) : undefined,
@@ -963,9 +1003,7 @@ export function apply(ctx, rawConfig) {
     () => {
       void supervisor.start()
       coordinator.start()
-      return () => {
-        void coordinator.stop().finally(()=>supervisor.stop())
-      }
+      return () => coordinator.stop().finally(() => supervisor.stop())
     },
     'paper-workbench: local backend lifecycle',
   )

@@ -13,7 +13,7 @@ test(
     const root = path.join(projectRoot, "output/harness-host-tests");
     mkdirSync(root, { recursive: true });
     const dataRoot = mkdtempSync(path.join(root, "run-"));
-    let handler, agentCreated, agentPreStep;
+    let handler, agentCreated, agentPreStep, backendPid;
     const disposers = [];
     const server = http.createServer((request, response) =>
       handler
@@ -66,7 +66,8 @@ test(
       logger: { info() {}, warn() {}, error() {}, debug() {} },
     };
     t.after(async () => {
-      for (const dispose of [...disposers].reverse()) dispose();
+      for (const dispose of [...disposers].reverse()) await dispose();
+      if (backendPid) assert.throws(() => process.kill(backendPid, 0), { code: 'ESRCH' }, 'disposal resolves only after the backend has exited');
       server.closeAllConnections();
       await new Promise((resolve) => server.close(resolve));
     });
@@ -102,6 +103,7 @@ test(
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     assert.equal(status.ready, true, JSON.stringify(status));
+    backendPid = status.pid;
     assert.equal(
       (await fetch(origin + "/paper-workbench/api/health")).status,
       401,

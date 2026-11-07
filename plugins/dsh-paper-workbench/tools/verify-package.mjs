@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { prepareRuntime, readRuntimeManifest, verifyRuntime } from '../runtime-cache.js'
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url))
 const pluginRoot = path.resolve(toolsDir, '..')
@@ -97,6 +98,8 @@ check('packaged bridge files match the recorded provenance and the current check
 check('packaged bundle includes backend production dependencies, Reader build and OCR assets', () => {
   const required = [
     'storage-location.js',
+    'runtime-cache.js',
+    'RUNTIME-MANIFEST.json',
     'node_modules/@deepseek-ai/schemastery/lib/index.mjs',
     'node_modules/@deepseek-ai/cosmokit/lib/index.js',
     'node_modules/@standard-schema/spec/package.json',
@@ -124,6 +127,14 @@ check('packaged bundle includes backend production dependencies, Reader build an
     if (!existsSync(path.join(packageRoot, relative))) throw new Error(`missing packaged resource: ${relative}`)
   }
   report.resourcesChecked = required.length
+})
+
+const runtimeManifest = readRuntimeManifest(packageRoot)
+const execution = await prepareRuntime({ pluginRoot: packageRoot, manifest: runtimeManifest })
+await verifyRuntime(execution.root, runtimeManifest)
+report.runtimeCache = { key: execution.key, root: execution.root }
+check('all execution resources are verified copies outside the install directory', () => {
+  if (execution.root.startsWith(packageRoot + path.sep)) throw Error('runtime still inside package')
 })
 
 const port = 43400 + Math.floor(Math.random() * 300)
@@ -162,9 +173,9 @@ try {
     '--out',
     outDir,
     '--expect-backend-root',
-    path.join(packageRoot, 'resources', 'backend'),
+    execution.backendRoot,
     '--expect-runtime',
-    path.join(packageRoot, 'resources', 'runtime', 'node.exe'),
+    execution.nodeExecutable,
     '--expect-data-root',
     dataRoot,
   ]

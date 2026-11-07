@@ -69,7 +69,7 @@ if (existsSync(distRoot)) rmSync(distRoot, { recursive: true, force: true })
 mkdirSync(distRoot, { recursive: true })
 
 // 1. Plugin halves and display resources.
-for (const file of ['index.js', 'agents.js', 'client.js', 'storage-location.js', 'cordis.patch.yml', 'icon.svg', 'README.md']) {
+for (const file of ['index.js', 'agents.js', 'client.js', 'storage-location.js', 'runtime-cache.js', 'cordis.patch.yml', 'icon.svg', 'README.md']) {
   const source = path.join(pluginRoot, file)
   if (!existsSync(source)) throw new Error(`missing plugin file: ${source}`)
   cpSync(source, path.join(distRoot, file))
@@ -85,6 +85,8 @@ manifest.files = [
   'index.js',
   'agents.js',
   'storage-location.js',
+  'runtime-cache.js',
+  'RUNTIME-MANIFEST.json',
   'client.js',
   'cordis.patch.yml',
   'README.md',
@@ -154,7 +156,7 @@ const bridgeFiles = [
 const provenance = {
   schemaVersion: 1,
   builtAt: new Date().toISOString(),
-  plugin: { name: manifest.name, version: manifest.version, files:Object.fromEntries(['index.js','agents.js','client.js','storage-location.js'].map(file=>[file,sha256(path.join(distRoot,file))])) },
+  plugin: { name: manifest.name, version: manifest.version, files:Object.fromEntries(['index.js','agents.js','client.js','storage-location.js','runtime-cache.js'].map(file=>[file,sha256(path.join(distRoot,file))])) },
   backend: {
     sourceRoot: 'src/',
     files: Object.fromEntries(bridgeFiles.map((relative) => [relative, sha256(path.join(backendRoot, relative))])),
@@ -174,6 +176,31 @@ const provenance = {
 }
 writeFileSync(path.join(distRoot, 'RESOURCES.json'), `${JSON.stringify(provenance, null, 2)}\n`)
 writeFileSync(path.join(backendRoot, 'HARNESS-PROVENANCE.json'), `${JSON.stringify(provenance, null, 2)}\n`)
+
+// Entire execution tree, including native dependencies, used to verify independent copies.
+// npm omits files such as .npmignore even below explicit resources/** globs.
+// Derive the inventory from its real packlist rather than the larger staging tree.
+const packArguments = ['pack', '--dry-run', '--ignore-scripts', '--json']
+const packOutput = process.platform === 'win32'
+  ? execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'npm.cmd pack --dry-run --ignore-scripts --json'], { cwd: distRoot, encoding: 'utf8', windowsHide: true })
+  : execFileSync('npm', packArguments, { cwd: distRoot, encoding: 'utf8' })
+const publishedFiles = new Set(JSON.parse(packOutput)[0].files.map(file => file.path))
+const runtimeFiles = []
+function collectRuntimeFiles(directory, prefix = '') {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name)
+    const relative = prefix + entry.name
+    if (entry.isDirectory()) collectRuntimeFiles(file, relative + '/')
+    else if (entry.isFile()) {
+      if (publishedFiles.has('resources/' + relative)) runtimeFiles.push({ path: relative, size: statSync(file).size, sha256: sha256(file) })
+    }
+    else throw new Error(`runtime resource must not be a link: ${relative}`)
+  }
+}
+collectRuntimeFiles(path.join(distRoot, 'resources'))
+runtimeFiles.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+const runtimeManifest = { schemaVersion: 1, key: createHash('sha256').update(JSON.stringify(runtimeFiles)).digest('hex'), files: runtimeFiles }
+writeFileSync(path.join(distRoot, 'RUNTIME-MANIFEST.json'), JSON.stringify(runtimeManifest, null, 2) + '\n')
 
 // 5. Report.
 const backendSize = directorySize(backendRoot)

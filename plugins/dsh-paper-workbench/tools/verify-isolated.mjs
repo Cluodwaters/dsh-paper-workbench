@@ -162,6 +162,9 @@ async function main() {
       await waitFor(session, `[...document.querySelectorAll("button")].some(n => n.offsetParent !== null && (n.textContent || '').trim() === '继续')`, { timeoutMs: 5000 }).catch(() => {})
       await dismissOnboarding()
       await waitFor(session, `[...document.querySelectorAll("dialog[open], [role=dialog]")].every(n => n.offsetParent === null)`, { timeoutMs: 15000 })
+      // Preparing/verifying the independent runtime is asynchronous. Readiness,
+      // not the mounting of the shell UI, admits the first library operation.
+      await waitFor(session, `(async () => { const r = await fetch('${BASE}/__workbench/status'); return r.ok && (await r.json()).ready })()`, { timeoutMs: 120000 })
     })
 
     const importedPaper = await step('Synthetic derived PDF imports and indexes through the host proxy', async () => {

@@ -41,13 +41,26 @@ with tarfile.open(installer, "r:gz") as packed:
     provenance = json.load(packed.extractfile("package/RESOURCES.json"))
     if provenance["plugin"]["version"] != version:
         raise RuntimeError("Installer provenance version differs")
-    for relative in ["index.js", "agents.js", "client.js", "storage-location.js", "README.md", "cordis.patch.yml"]:
+    for relative in ["index.js", "agents.js", "client.js", "storage-location.js", "runtime-cache.js", "README.md", "cordis.patch.yml"]:
         if packed.extractfile("package/" + relative).read() != (plugin / relative).read_bytes():
             raise RuntimeError(f"Installer differs from source: {relative}")
     for relative, expected in provenance["backend"]["files"].items():
         data = packed.extractfile("package/resources/backend/" + relative).read()
         if hashlib.sha256(data).hexdigest() != expected or data != (root / relative).read_bytes():
             raise RuntimeError(f"Installer backend differs from source: {relative}")
+    runtime_manifest = json.load(packed.extractfile("package/RUNTIME-MANIFEST.json"))
+    runtime_names = {entry["path"] for entry in runtime_manifest["files"]}
+    packed_runtime_names = {entry.name.removeprefix("package/resources/") for entry in packed.getmembers()
+                            if entry.isfile() and entry.name.startswith("package/resources/")}
+    if runtime_names != packed_runtime_names:
+        raise RuntimeError("Runtime manifest does not cover exactly the published resources")
+    canonical = json.dumps(runtime_manifest["files"], ensure_ascii=False, separators=(",", ":")).encode()
+    if hashlib.sha256(canonical).hexdigest() != runtime_manifest["key"]:
+        raise RuntimeError("Runtime manifest digest differs")
+    for entry in runtime_manifest["files"]:
+        data = packed.extractfile("package/resources/" + entry["path"]).read()
+        if len(data) != entry["size"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
+            raise RuntimeError(f"Runtime resource integrity mismatch: {entry['path']}")
 release = root / "output/releases" / f"v{version}"
 release.mkdir(parents=True, exist_ok=True)
 versioned_asset = release / installer.name

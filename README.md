@@ -1,8 +1,8 @@
 # 文献工作台 · DeepSeek Harness 插件
 
-在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.5**，已验证平台为 **Windows x64 + DSH 0.2.2-rc.1**。
+在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.6**，已验证平台为 **Windows x64 + DSH 0.2.2-rc.1**。
 
-**[下载 Windows x64 插件安装包 · v0.2.5](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.5/dsh-paper-workbench-windows-x64.tgz)**
+**[下载 Windows x64 插件安装包 · v0.2.6](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.6/dsh-paper-workbench-windows-x64.tgz)**
 
 需要后续在线更新，请按下文的在线地址安装；也可下载后保持 `.tgz` 原样，在 DSH「插件 → 安装本地插件」中选择它。`sources.tar.gz` 和 GitHub 的 `Source code` 是开发源码，不能直接安装。若提示「这个包没有声明组合包」，请核对选择的是上面的 `.tgz` 文件。
 
@@ -36,9 +36,11 @@
 
 ### 从旧版本更新与插件商店
 
-已通过本地文件安装的 v0.2.4：先完整退出 DSH，再执行上面的在线安装命令，成功后重新打开。无需先卸载、删除资料库或重建论文对话，已有设置、论文、摘要及会话绑定继续保留。
+**0.2.6 修复了本插件后台占用安装包的问题。** 后台从 DSH 用户目录中的独立运行副本启动；从本版升级后续版本时，可保持 DSH 打开，在商店应用更新，安装成功后按宿主提示重载或重启。论文、摘要和会话继续使用原存储。
 
-市场目录条目收录并同步后，通过该在线来源安装的插件可以在 **dshmarket 插件商店 → 已安装 / 更新** 中检查并应用新版，更新后完整重启 DSH。每次发布使用递增版本号和同一个安装包文件名；商店读取新版本清单，再下载对应版本的固定附件。已提交 [上架申请 #12897](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12897)，审核及验证范围见 [市场收录说明](docs/marketplace/README.md)，当前提交不等于已经收录。
+**0.2.5 及更早版本首次迁移：** 在 DSH 插件管理中停用文献工作台，待停用完成后在 DSH 内安装 0.2.6，再启用。已通过 DSH 原生管理接口验证 0.2.5 的这套流程可以保持 DSH 打开；若宿主提示停用需重启，则仅首次按提示重启后安装。无需删除资料库或用命令行安装。通过本地 `.tgz` 安装后，仍需使用固定在线地址重新安装一次才能接入原生在线更新通道。
+
+市场目录条目收录并同步后，通过该在线来源安装的插件可以在 **dshmarket 插件商店 → 已安装 / 更新** 中检查并应用新版，更新后按 DSH 提示重载或重启。每次发布使用递增版本号和同一个安装包文件名；商店读取新版本清单，再下载对应版本的固定附件。已提交 [上架申请 #12897](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/12897)，审核及验证范围见 [市场收录说明](docs/marketplace/README.md)，当前提交不等于已经收录。
 
 如果商店未出现更新，先刷新目录和更新列表，并确认安装来源不是 `file:` 或旧的带版本文件名地址。旧版 dshmarket 可能尚不支持 GitHub Release 更新，应先更新商店。国内网络无法检测版本时，可在 dshmarket「设置 → 插件 → 插件配置」选择中国大陆下载区域后重试。网络或 GitHub 下载失败时保留原安装，恢复网络后重试。
 
@@ -47,8 +49,8 @@
 | 下载文件 | 用途 |
 |---|---|
 | **`dsh-paper-workbench-windows-x64.tgz`** | **完整安装包；固定文件名用于商店的在线更新通道** |
-| `dsh-paper-workbench-0.2.5.tgz` | 同一安装包的带版本文件名副本，用于手动安装与归档 |
-| `dsh-paper-workbench-0.2.5-sources.tar.gz` | 开发者源码，包含固定版本上游源码；按 `BUILD.md` 构建后才能安装 |
+| `dsh-paper-workbench-0.2.6.tgz` | 同一安装包的带版本文件名副本，用于手动安装与归档 |
+| `dsh-paper-workbench-0.2.6-sources.tar.gz` | 开发者源码，包含固定版本上游源码；按 `BUILD.md` 构建后才能安装 |
 | GitHub 自动生成的 `Source code (zip / tar.gz)` | 仓库源码快照；不能作为插件安装 |
 | `SHA256SUMS.txt` | 下载文件的校验值 |
 
@@ -78,7 +80,7 @@
 
 ## 开发与架构
 
-这是包含插件与本地后台的完整源码仓库。源码中的独立应用版本为 0.3.2，DSH 插件版本为 0.2.5，两者版本号分别维护。
+这是包含插件与本地后台的完整源码仓库。源码中的独立应用版本为 0.3.2，DSH 插件版本为 0.2.6，两者版本号分别维护。
 
 | 路径 | 内容 |
 |---|---|

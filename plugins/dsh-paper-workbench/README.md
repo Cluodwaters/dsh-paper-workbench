@@ -1,6 +1,6 @@
-# 文献工作台 · DeepSeek Harness 插件 0.2.5
+# 文献工作台 · DeepSeek Harness 插件 0.2.6
 
-**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.5/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.6/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
@@ -90,10 +90,14 @@ dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workb
 node plugins/dsh-paper-workbench/tools/package.mjs
 cd plugins/dsh-paper-workbench/dist
 npm pack --pack-destination .. --ignore-scripts
-dsh plugin --profile desktop add <dsh-paper-workbench-0.2.5.tgz 的绝对路径>
+dsh plugin --profile desktop add <dsh-paper-workbench-0.2.6.tgz 的绝对路径>
 ```
 
-`dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。通过官方插件管理安装后，从 DSH「应用 → 退出」完整退出再打开以加载新版本；关闭窗口可能仅隐藏到托盘。卸载插件不删除资料库。
+`dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。也可在 DSH 的本地插件安装页面选择下载的 `.tgz`，安装后按宿主提示重新加载或重启。卸载插件不删除资料库。
+
+从 0.2.6 开始，后台、Node、原生依赖和阅读资源先复制到 `%USERPROFILE%\.dsh\cache\dsh-paper-workbench\runtimes\`（设置了 `DSH_HOME` 时位于该目录下）。复制按完整 SHA-256 清单校验后才启用，运行中的版本不占用插件安装目录，后续可保持 DSH 打开应用商店更新；新代码的生效仍遵循 DSH 的重载或重启提示。第一次启动或更新需要准备运行副本和额外磁盘空间。旧副本保留，完整退出 DSH 后可删除这处运行缓存以回收空间，下次启动会重建；它不包含论文和聊天。
+
+已运行的 0.2.5 及更早版本不能自行释放旧文件句柄。第一次迁移需先在 DSH 内停用文献工作台，待停用完成，再在插件页面安装新包并启用。已用宿主原生接口验证 0.2.5 可保持 DSH 打开完成这一步；如果宿主提示停用需重启，再按提示完整重启一次。后续不需要为释放本插件文件而在安装前退出或使用命令行。市场收录状态及在线安装来源要求见仓库首页。
 
 ## 可选配置
 
@@ -126,7 +130,7 @@ Windows 默认资料目录为 `%LOCALAPPDATA%\dsh-paper-workbench\data`。在 **
 | 键 | 默认 | 说明 |
 |---|---|---|
 | `backendRoot` | 包内 `resources/backend` | 开发时可指向后端源码目录 |
-| `nodeExecutable` | 包内 `resources/runtime/node.exe` | 后台 Node ≥ 25.8.1 |
+| `nodeExecutable` | 已校验的运行缓存副本 | 后台 Node ≥ 25.8.1；包内路径自动映射至副本 |
 | `dataRoot` | `%LOCALAPPDATA%/dsh-paper-workbench/data` | 独立资料库，不可与运行中的独立应用共用 |
 | `autoIndex` | `true` | 为缺失全文建立索引 |
 | `autoRead` | `true` | 新导入时创建初读任务；关闭仅影响后续导入，已有任务可在界面取消 |
