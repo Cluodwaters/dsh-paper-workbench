@@ -16,3 +16,109 @@ body.direct-reader header > div:first-child > span {
 body.direct-reader footer > span:last-child {
   display: none;
 }
+
+body.compact-reader > header,
+body.compact-reader .workspace > footer {
+  display: none;
+}
+body.compact-reader main {
+  height: 100vh;
+}
+body.compact-reader .toolbar {
+  height: 36px;
+  min-height: 36px;
+  padding: 3px 10px;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+body.compact-reader .document-title {
+  flex: 1;
+  width: auto;
+  font-size: 11px;
+  color: var(--h-muted);
+}
+body.compact-reader .toolbar .status {
+  flex: 0 1 auto;
+  max-width: 160px;
+  font-size: 11px;
+  color: var(--h-muted);
+}
+body.compact-reader .toolbar .status[data-state="failed"],
+body.compact-reader .toolbar .status[data-state="conflict"] {
+  color: light-dark(#b53327, #ff9b91);
+}
+body.compact-reader .toolbar > button {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+#reader-tools-toggle::after {
+  content: "⌄";
+  margin-left: 7px;
+  color: var(--h-muted);
+}
+#reader-tools-toggle[aria-expanded="true"] {
+  background: var(--h-selected);
+  border-color: var(--h-accent);
+}
+#reader-tools {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: 240px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--h-border);
+  border-radius: 9px;
+  background: var(--h-surface);
+  color: var(--h-ink);
+  box-shadow: 0 8px 28px #0003;
+}
+#reader-tools .actions,
+#reader-tools .harness-ai-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 3px;
+  border: 0;
+}
+#reader-tools .harness-ai-tools {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--h-border);
+}
+#reader-tools .reader-tools-label,
+#reader-tools .harness-ai-tools > span {
+  padding: 3px 8px;
+  margin: 0;
+  color: var(--h-muted);
+  font-size: 10px;
+}
+#reader-tools button {
+  padding: 7px 8px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--h-ink);
+  font-size: 12px;
+  text-align: left;
+}
+#reader-tools button:not(:disabled):hover {
+  background: var(--h-soft);
+}
+#reader-tools .harness-ai-tools small {
+  display: none;
+}
+@media (max-width: 500px) {
+  body.compact-reader .toolbar {
+    gap: 6px;
+  }
+  body.compact-reader .toolbar .status {
+    max-width: 80px;
+  }
+}

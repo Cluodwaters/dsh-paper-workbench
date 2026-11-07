@@ -138,6 +138,9 @@ const bridgeFiles = [
   'src/web/url.js',
   'src/web/theme-init.js',
   'src/web/harness.css',
+  'src/web/app.js',
+  'src/web/reader-shell.css',
+  'src/web/reader-toolbar.js',
 ]
 const provenance = {
   schemaVersion: 1,

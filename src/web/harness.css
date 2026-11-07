@@ -143,7 +143,10 @@ header {
 }
 @media (max-width: 1000px) {
   .harness-embedded .app-header {
-    grid-template-columns: minmax(112px, 1fr) minmax(0, 580px) minmax(112px, 1fr);
+    grid-template-columns: minmax(112px, 1fr) minmax(0, 580px) minmax(
+        112px,
+        1fr
+      );
   }
   .harness-embedded .details-panel {
     top: 60px;
@@ -179,19 +182,6 @@ header {
   .harness-embedded .details-panel {
     top: 104px;
   }
-}
-.harness-embedded.direct-reader header {
-  height: 36px;
-  padding: 0 16px;
-}
-.harness-embedded.direct-reader header > div:first-child {
-  display: none;
-}
-.harness-embedded.direct-reader .status {
-  max-width: 100%;
-}
-.harness-embedded.direct-reader main {
-  height: calc(100vh - 36px);
 }
 .harness-ai-tools {
   display: flex;

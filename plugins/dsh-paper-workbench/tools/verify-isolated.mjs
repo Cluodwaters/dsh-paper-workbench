@@ -147,9 +147,6 @@ async function main() {
       )
     }
 
-    await dismissOnboarding()
-    await waitFor(session, `document.querySelectorAll("dialog[open], [role=dialog]").length === 0`, { timeoutMs: 15000 }).catch(() => {})
-
     await step('Harness Web app boots and exposes the Paper Workbench sidebar entry', async () => {
       await waitFor(
         session,
@@ -159,6 +156,12 @@ async function main() {
         })()`,
         { timeoutMs: 30000 },
       )
+      // Page.load precedes the asynchronously mounted welcome dialog in a fresh
+      // profile. Wait for app readiness before dismissing it, or it traps focus
+      // later when the native composer is exercised.
+      await waitFor(session, `[...document.querySelectorAll("button")].some(n => n.offsetParent !== null && (n.textContent || '').trim() === '继续')`, { timeoutMs: 5000 }).catch(() => {})
+      await dismissOnboarding()
+      await waitFor(session, `[...document.querySelectorAll("dialog[open], [role=dialog]")].every(n => n.offsetParent === null)`, { timeoutMs: 15000 })
     })
 
     const importedPaper = await step('Synthetic derived PDF imports and indexes through the host proxy', async () => {
@@ -442,8 +445,9 @@ async function main() {
         `(() => {
           const frame = document.querySelector('.pw-frame')
           const win = frame.contentWindow
-          const tools = frame.contentDocument.querySelector('.harness-ai-tools')
-          return Boolean(tools && !tools.hidden && win.workbench && win.workbench.adapter && win.workbench.adapter.pdfApplication)
+          const tools = frame.contentDocument.querySelector('#reader-tools-toggle')
+          const panel = frame.contentDocument.querySelector('#reader-tools')
+          return Boolean(tools && panel && !panel.matches(':popover-open') && win.workbench && win.workbench.adapter && win.workbench.adapter.pdfApplication)
         })()`,
         { timeoutMs: 120000 },
       )
@@ -458,7 +462,7 @@ async function main() {
     await step('"Ask about this paper" opens the native AI panel with context but submits nothing', async () => {
       await evaluate(
         session,
-        `(() => { document.querySelector('.pw-frame').contentDocument.querySelector('[data-ai-action="ask"]').click(); return true })()`,
+        `(() => { const doc = document.querySelector('.pw-frame').contentDocument; doc.querySelector('#reader-tools-toggle').click(); if (!doc.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); doc.querySelector('[data-ai-action="ask"]').click(); return true })()`,
       )
       await waitFor(session, `(() => { const panel = document.querySelector('.pw-panel'); return Boolean(panel && panel.getAttribute('data-collapsed') === 'false') })()`, {
         timeoutMs: 15000,
@@ -586,7 +590,7 @@ async function main() {
       const before = sessionId ? await readPaperContextSnapshot(sessionId) : null
       await evaluate(
         session,
-        `(() => { document.querySelector('.pw-frame').contentDocument.querySelector('[data-ai-action="translate"]').click(); return true })()`,
+        `(() => { const doc = document.querySelector('.pw-frame').contentDocument; doc.querySelector('#reader-tools-toggle').click(); if (!doc.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); doc.querySelector('[data-ai-action="translate"]').click(); return true })()`,
       )
       await waitFor(
         session,

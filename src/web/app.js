@@ -1,14 +1,21 @@
 import { api } from "./persistence-client.js";
 import { ZoteroReaderAdapter } from "./zotero-reader-adapter.js";
 import { appUrl } from "./url.js";
-import { connectHarness, requestAi } from "./harness-bridge.js";
+import { connectHarness, requestAi, embedded } from "./harness-bridge.js";
+import { compactReaderToolbar } from "./reader-toolbar.js";
 const $ = (id) => document.getElementById(id);
+if (embedded) compactReaderToolbar();
 let documents = [],
   adapter = null,
   opening = false;
 function status(state, text) {
   $("save-status").dataset.state = state;
-  $("save-status").textContent = text;
+  $("save-status").title = text;
+  $("save-status").setAttribute("aria-label", text);
+  $("save-status").textContent =
+    embedded && state === "saved" && text.startsWith("已落盘")
+      ? "已保存"
+      : text;
   $("retry").hidden = !["failed", "conflict"].includes(state);
 }
 function notice(message) {
@@ -55,6 +62,7 @@ async function openDocument(id) {
     $("placeholder").hidden = true;
     $("document-title").textContent =
       doc.attachment.title || doc.attachment.originalName;
+    $("document-title").title = $("document-title").textContent;
     document.title =
       (doc.attachment.title || doc.attachment.originalName) + " · 阅读器";
     $("document-info").textContent =

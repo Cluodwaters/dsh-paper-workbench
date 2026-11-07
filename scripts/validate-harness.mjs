@@ -252,7 +252,84 @@ try {
     { timeout: 60000 },
   );
   frame = page.frames().find((f) => f.url().includes("/reader.html?"));
-  assert.equal(await frame.locator(".harness-ai-tools").isVisible(), true);
+  const toolsToggle = frame.locator("#reader-tools-toggle");
+  const toolsPanel = frame.locator("#reader-tools");
+  assert.equal(await toolsToggle.isVisible(), true);
+  assert.equal(await frame.locator(".harness-ai-tools").isVisible(), false);
+  const title = frame.locator("#document-title");
+  assert.equal(await title.getAttribute("title"), await title.textContent());
+  report.readerLayout = [];
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate((theme) => command("theme", { theme }), theme);
+    for (const width of [1440, 960, 640, 480, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      const before = await frame.locator(".reading-area").boundingBox();
+      assert.equal(before.y, 36, "only one compact bar precedes the PDF");
+      assert.equal(
+        before.height,
+        864,
+        "no redundant footer consumes reading space",
+      );
+      await toolsToggle.click();
+      assert.equal(await toolsPanel.isVisible(), true);
+      assert.equal(await toolsToggle.getAttribute("aria-expanded"), "true");
+      assert.deepEqual(
+        await frame.locator(".reading-area").boundingBox(),
+        before,
+      );
+      const panelBox = await toolsPanel.boundingBox();
+      assert.ok(panelBox.x >= 0 && panelBox.x + panelBox.width <= width);
+      assert.ok(panelBox.y + panelBox.height <= 900);
+      assert.ok(
+        await frame.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      );
+      if (width === 1440 || width === 320)
+        await page.screenshot({
+          path: path.join(output, `reader-tools-${theme}-${width}.png`),
+        });
+      await frame.locator("#page-text-button").focus();
+      await page.keyboard.press("Escape");
+      assert.equal(await toolsPanel.isVisible(), false);
+      assert.equal(await toolsToggle.getAttribute("aria-expanded"), "false");
+      assert.equal(
+        await toolsToggle.evaluate((el) => el === document.activeElement),
+        true,
+      );
+      report.readerLayout.push({
+        theme,
+        width,
+        toolbarHeight: before.y,
+        readerHeight: before.height,
+      });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await toolsToggle.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  assert.equal(
+    await frame
+      .locator("#page-text-button")
+      .evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.keyboard.press("Enter");
+  await frame.locator("dialog[open] #page-text").waitFor();
+  assert.equal(await toolsPanel.isVisible(), false);
+  await frame.getByRole("button", { name: "关闭对话框" }).click();
+  await toolsToggle.click();
+  await frame.locator("#save").click();
+  await frame.waitForFunction(
+    () => document.querySelector("#save-status").textContent === "已保存",
+  );
+  await toolsToggle.click();
+  await frame.locator("#document-title").click();
+  assert.equal(await toolsPanel.isVisible(), false);
+  pass(
+    "reader tools float above a 36px toolbar in both themes at 320–1440px; keyboard, OCR, save and dismissal work",
+  );
   assert.equal(
     (await page.evaluate(() => command("navigate", { pageIndex: 1 }))).value
       .pageIndex,
@@ -262,6 +339,24 @@ try {
   const pdf = page.frames().find((f) => f.url().includes("/pdf/"));
   assert.ok(pdf, "PDF frame loaded");
   await pdf.locator(".textLayer span").first().waitFor();
+  const clickPdf = async () => {
+    const box = await (await pdf.frameElement()).boundingBox();
+    await page.mouse.click(box.x + 100, box.y + 120);
+  };
+  await toolsToggle.click();
+  await clickPdf();
+  assert.equal(
+    await toolsPanel.isVisible(),
+    false,
+    "clicking the PDF dismisses reader tools",
+  );
+  await toolsToggle.click();
+  await clickPdf();
+  assert.equal(
+    await toolsPanel.isVisible(),
+    false,
+    "PDF dismissal also works when the PDF already had focus",
+  );
   const selected = await pdf.evaluate(() => {
     const el = document.querySelector(".textLayer span");
     const range = document.createRange();
@@ -272,7 +367,9 @@ try {
     return s.toString().trim();
   });
   assert.ok(selected);
+  await toolsToggle.click();
   await frame.locator('[data-ai-action="translate"]').click();
+  assert.equal(await toolsPanel.isVisible(), false);
   await page.waitForFunction(() =>
     messages.some((m) => m.type === "paper-workbench:ai"),
   );
@@ -343,6 +440,12 @@ try {
     () => window.workbench.adapter.getSaveState() === "failed",
   );
   assert.equal((await page.evaluate(() => command("flush"))).ok, false);
+  assert.equal(await toolsPanel.isVisible(), false);
+  assert.equal(await frame.locator("#retry").isVisible(), true);
+  assert.equal(
+    await frame.locator("#save-status").getAttribute("data-state"),
+    "failed",
+  );
   await page.unroute("**/api/annotations/**", fail);
   await frame.locator("#retry").click();
   assert.equal((await page.evaluate(() => command("flush"))).ok, true);
@@ -353,10 +456,25 @@ try {
     `/api/ai/annotations/${doc.id}?sourceHash=${doc.sourceHash}`,
   );
   assert.ok(annotations.annotations.some((a) => a.type === "ink"));
-  const exported = await api("/api/export/" + doc.id, {
-    expectedRevision: annotations.revision,
-  });
-  const pdfResponse = await fetch(origin + mount + exported.downloadUrl);
+  await toolsToggle.click();
+  const backupDownload = page.waitForEvent("download");
+  await frame.locator("#export-json").click();
+  const backup = await backupDownload;
+  const snapshot = JSON.parse(readFileSync(await backup.path(), "utf8"));
+  assert.equal(snapshot.saveState, "saved");
+  assert.ok(snapshot.annotations.some((a) => a.type === "ink"));
+  await toolsToggle.click();
+  const pdfDownload = page.waitForEvent("download");
+  await frame.locator("#export-pdf").click();
+  assert.equal(await toolsPanel.isVisible(), false);
+  const exported = await pdfDownload;
+  assert.equal(
+    readFileSync(await exported.path())
+      .subarray(0, 5)
+      .toString(),
+    "%PDF-",
+  );
+  const pdfResponse = await fetch(exported.url());
   assert.equal(pdfResponse.status, 200);
   assert.match(pdfResponse.headers.get("content-type"), /application\/pdf/);
   pass("mounted export downloads remain reachable after acknowledged saves");
