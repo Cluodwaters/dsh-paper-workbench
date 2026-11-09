@@ -430,6 +430,44 @@ async function main() {
       report.screenshots.push(await screenshot(session, path.join(outDir, '01-library.png')))
     })
 
+    await step('A single paper can be moved to the recycle bin and restored from its details', async () => {
+      const library = "document.querySelector('.pw-frame').contentDocument"
+      const selector = (name) => `${library}.querySelector(${JSON.stringify(name)})`
+      const click = (name) => evaluate(session, `(() => {
+        const control = ${selector(name)}
+        if (!control?.getClientRects().length) throw new Error('Library control is missing or hidden')
+        control.click()
+      })()`)
+      const waitText = (name, text) => waitFor(
+        session,
+        `${selector(name)}?.textContent.trim() === ${JSON.stringify(text)}`,
+        { timeoutMs: 10000 },
+      )
+      const archive = '#details [data-action="change-archive"]'
+      const confirm = 'dialog[open] [type="submit"]'
+      await click('#table-body .paper-title')
+      await waitText(archive, '移入回收站')
+      await click(archive)
+      await click('dialog[open] [data-close]')
+      await waitText('#count-trash', '0')
+      await click(archive)
+      await click(confirm)
+      await waitText('#count-trash', '1')
+      await waitText('#result-total', '0')
+
+      await click('[data-view="trash"]')
+      await waitText('#view-title', '回收站')
+      await click('#table-body .paper-title')
+      await waitText(archive, '恢复到文献库')
+      await click(archive)
+      await click(confirm)
+      await waitText('#empty-state h2', '回收站为空')
+      await click('[data-view="all"]')
+      await waitText('#result-total', '1')
+      const restoredId = await evaluate(session, `new URL(${selector('.read-link')}.href).searchParams.get('id')`)
+      if (restoredId !== attachmentId) throw new Error('The restored paper lost its original attachment')
+    })
+
     await step('Library navigation switches the same panel to the native-bound reader', async () => {
       await evaluate(
         session,

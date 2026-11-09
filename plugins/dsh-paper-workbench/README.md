@@ -1,6 +1,6 @@
-# 文献工作台 · DeepSeek Harness 插件 0.2.6
+# 文献工作台 · DeepSeek Harness 插件
 
-**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/download/v0.2.6/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
@@ -24,6 +24,8 @@ DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和
 4. 全文检查点齐备后保存主题、科学问题、方法、行文逻辑、发现、局限和待核查问题。摘要标注来源页、来源哈希、版本、文本覆盖与 AI 未核验状态。
 5. 打开论文时恢复该论文的 DSH 对话，自动初读过程可见。普通问答后助手合并共享摘要；未保存时显示「摘要待更新」，不会提前宣告保存成功。
 6. 「新话题」建立空上下文的独立会话；话题菜单可回到旧会话。历史由 DSH 保留，共享摘要仍属于该篇论文。新话题可先读取既有摘要，无需复制完整聊天。
+
+点开文献，在详情顶部选择「移入回收站」。在左侧「回收站」点开条目，可以选择「恢复到文献库」。PDF、批注和会话绑定会保留，也支持勾选多篇批量操作。
 
 ## 主助手与论文助手
 
@@ -72,13 +74,13 @@ flowchart LR
 
 ## 安装与构建
 
-推荐使用在线入口安装，以便市场收录并同步后继续通过商店更新：
+推荐通过固定在线入口安装，以便通过 dshmarket 更新：
 
 ```powershell
 dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz"
 ```
 
-旧版通过本地 `.tgz` 安装的用户，也需执行一次此命令切换来源。安装后完整退出并重新打开 DSH；无需先卸载，原资料库、设置与会话绑定保留。之后在 dshmarket 的「已安装 / 更新」检查并应用新版，再完整重启。更新通道依赖市场已收录该条目及商店对 GitHub Release 的支持；[提交状态](https://github.com/Cluodwaters/dsh-paper-workbench/blob/main/docs/marketplace/README.md) 与人工审核结果分别说明。
+通过本地 `.tgz` 安装的用户，可以执行一次此命令切换来源。安装后完整退出并重新打开 DSH，原资料库、设置与会话绑定保留。之后在 dshmarket 的「已安装 / 更新」检查并应用新版，按宿主提示重载或重启。收录和更新机制见 [市场说明](https://github.com/Cluodwaters/dsh-paper-workbench/blob/main/docs/marketplace/README.md)。
 
 手动安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-windows-x64.tgz`。下载公开，无需登录 GitHub；本地文件来源不自动跟随线上发布。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
 
@@ -90,7 +92,7 @@ dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workb
 node plugins/dsh-paper-workbench/tools/package.mjs
 cd plugins/dsh-paper-workbench/dist
 npm pack --pack-destination .. --ignore-scripts
-dsh plugin --profile desktop add <dsh-paper-workbench-0.2.6.tgz 的绝对路径>
+dsh plugin --profile desktop add <dsh-paper-workbench-版本号.tgz 的绝对路径>
 ```
 
 `dsh` 未加入 PATH 时使用 DSH 安装目录的 `resources/runtime/cli/bin/dsh.cmd`。也可在 DSH 的本地插件安装页面选择下载的 `.tgz`，安装后按宿主提示重新加载或重启。卸载插件不删除资料库。

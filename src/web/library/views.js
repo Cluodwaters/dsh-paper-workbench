@@ -23,7 +23,17 @@ export function renderRows(result, state) {
     <td class="open-cell">${item.attachments.length ? `<a class="read-link" href="./reader.html?id=${item.attachments[0].id}" target="_blank" rel="noopener" title="在独立页面阅读 PDF">PDF ↗</a><small>${item.annotationCount ? item.annotationCount + " 条标注" : ""}</small>` : '<span class="missing small">无附件</span>'}</td></tr>`,
     )
     .join("");
-  $("empty-state").hidden = result.items.length > 0;
+  const empty = $("empty-state");
+  empty.hidden = result.items.length > 0;
+  if (!empty.hidden) {
+    const trashEmpty = state.query.archived && !result.counts.archived;
+    empty.querySelector("h2").textContent = trashEmpty
+      ? "回收站为空"
+      : "没有找到符合条件的文献";
+    empty.querySelector("p").textContent = trashEmpty
+      ? "移入回收站的文献会显示在这里，可以恢复到文献库。"
+      : `试着减少筛选条件，或清空搜索词。${state.query.archived ? "" : "也可以导入新的 PDF。"}`;
+  }
   $("previous-page").disabled = result.offset === 0;
   $("next-page").disabled = result.offset + result.limit >= result.total;
   $("select-all").checked =

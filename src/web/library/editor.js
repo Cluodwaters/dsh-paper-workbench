@@ -21,8 +21,22 @@ import {
 } from "./dom.js";
 
 export class MetadataEditor {
-  constructor({ container, libraryId, onSaved, onFilter, onAttach }) {
-    Object.assign(this, { container, libraryId, onSaved, onFilter, onAttach });
+  constructor({
+    container,
+    libraryId,
+    onSaved,
+    onFilter,
+    onAttach,
+    onChangeArchive,
+  }) {
+    Object.assign(this, {
+      container,
+      libraryId,
+      onSaved,
+      onFilter,
+      onAttach,
+      onChangeArchive,
+    });
     this.item = null;
     this.editing = false;
     this.draft = null;
@@ -117,6 +131,7 @@ export class MetadataEditor {
   }
   clear() {
     this.item = null;
+    this.editing = false;
     this.draft = null;
     this.container.innerHTML =
       '<div class="detail-empty"><div class="empty-book">▤</div><h3>选择一篇文献</h3><p>在这里查看书目信息、整理标签，或打开 PDF 阅读。</p></div>';
@@ -128,7 +143,8 @@ export class MetadataEditor {
       return;
     }
     this.container.innerHTML = `<div class="detail-heading"><div><span class="eyebrow">${item ? "文献信息" : "新建文献"}</span><strong>${this.editing ? "编辑书目信息" : "文献详情"}</strong></div><button type="button" class="icon-button" data-action="close" aria-label="收起详情">×</button></div>
-      <div class="detail-tabs"><button type="button" data-action="overview" class="${!this.editing ? "active" : ""}" ${!item ? "disabled" : ""}>概览</button><button type="button" data-action="edit" class="${this.editing ? "active" : ""}" ${item?.archivedAt ? "disabled" : ""}>编辑</button></div>
+      <div class="detail-tabs"><button type="button" data-action="overview" class="${!this.editing ? "active" : ""}" ${!item ? "disabled" : ""}>概览</button><button type="button" data-action="edit" class="${this.editing ? "active" : ""}" ${item?.archivedAt ? "disabled" : ""}>编辑</button>
+      ${item ? `<button type="button" class="detail-trash-action" data-action="change-archive">${item.archivedAt ? "恢复到文献库" : "移入回收站"}</button>` : ""}</div>
       ${this.otherDrafts?.length ? `<div class="hint"><span>本机还保留了 ${this.otherDrafts.length} 份其他页签草稿。</span> <button type="button" class="text-button" data-action="recover-draft">查看与恢复</button></div>` : ""}
       ${this.editing ? this.form() : this.overview()}`;
   }
@@ -395,6 +411,7 @@ export class MetadataEditor {
       }
     }
     if (action === "attach") this.onAttach(this.item.id);
+    if (action === "change-archive") await this.onChangeArchive(this.item);
     if (action === "export-item")
       downloadJSON([this.item.csl], "reference.json");
     if (action === "lookup-doi") await this.lookupDoi(button);

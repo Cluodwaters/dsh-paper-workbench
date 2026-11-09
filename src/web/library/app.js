@@ -157,6 +157,64 @@ async function reloadSearches() {
 function selectedRows() {
   return state.rows.filter((item) => state.checked.has(item.id));
 }
+async function setArchived(items, archived) {
+  if (!items.length) return;
+  const includes = (id) => items.some((item) => item.id === id);
+  if (includes(editor.item?.id) && (editor.saving || editor.isDirty())) {
+    toast("请先保存或重新载入当前文献信息，再操作回收站。", true);
+    return;
+  }
+  const action = archived ? "移入回收站" : "恢复到文献库";
+  const subject =
+    items.length === 1
+      ? `「${esc(items[0].metadata?.title ?? items[0].title)}」`
+      : `${items.length} 条文献`;
+  const command = {
+    requestId: crypto.randomUUID(),
+    items: items.map((item) => ({
+      id: item.id,
+      expectedRevision: item.revision,
+    })),
+    changes: { archived },
+  };
+  const result = await modal({
+    title: action,
+    confirm: action,
+    content: `<p>${subject}将${action}。${archived ? "PDF 和批注会保留，可随时恢复。" : ""}</p>`,
+    async onSubmit(_data, dialog) {
+      const closeButtons = dialog.querySelectorAll("[data-close]");
+      const preventCancel = (event) => event.preventDefault();
+      closeButtons.forEach((button) => (button.disabled = true));
+      dialog.addEventListener("cancel", preventCancel);
+      try {
+        return await api("/api/library/batch", command);
+      } catch (error) {
+        if (error.code !== "METADATA_CONFLICT") throw error;
+        await refresh();
+        if (includes(state.selectedId) && !editor.isDirty())
+          await selectItem(state.selectedId);
+        throw new Error("文献信息已更新。请关闭对话框，核对后重试。");
+      } finally {
+        closeButtons.forEach((button) => (button.disabled = false));
+        dialog.removeEventListener("cancel", preventCancel);
+      }
+    },
+  });
+  if (!result) return;
+  for (const item of items) state.checked.delete(item.id);
+  if (includes(state.selectedId) && !editor.isDirty()) {
+    state.selectedId = null;
+    itemToken++;
+    editor.clear();
+    $("details").classList.remove("mobile-open");
+  }
+  await refresh();
+  toast(
+    archived
+      ? `已将 ${result.count} 条文献移入回收站`
+      : `已恢复 ${result.count} 条文献`,
+  );
+}
 async function doImport(files) {
   const target = attachTarget;
   attachTarget = null;
@@ -205,6 +263,7 @@ function bind() {
       saved = event.target.closest("[data-saved]"),
       menu = event.target.closest("[data-search-menu]");
     if (view) {
+      event.currentTarget.classList.remove("mobile-open");
       state.savedId = null;
       state.query = normalizeLibraryQuery({
         archived: view.dataset.view === "trash",
@@ -341,30 +400,9 @@ function bind() {
       toast(error.message, true);
     }
   });
-  $("trash-selected").addEventListener("click", async () => {
+  $("trash-selected").addEventListener("click", () => {
     const rows = selectedRows();
-    if (!rows.length) return;
-    const result = await modal({
-      title: state.query.archived ? "恢复所选文献" : "移入回收站",
-      confirm: state.query.archived ? "恢复" : "移入回收站",
-      content: `<p>将处理已勾选的 ${rows.length} 条文献。${state.query.archived ? "恢复后会重新出现在文献库。" : "PDF 和标注会保留，可随时恢复。"}</p>`,
-      onSubmit: () =>
-        api("/api/library/batch", {
-          requestId: crypto.randomUUID(),
-          items: rows.map((item) => ({
-            id: item.id,
-            expectedRevision: item.revision,
-          })),
-          changes: { archived: !state.query.archived },
-        }),
-    });
-    if (result) {
-      state.checked.clear();
-      await refresh();
-      if (state.selectedId && !editor.isDirty())
-        await selectItem(state.selectedId);
-      toast("操作已完成");
-    }
+    if (rows.length) return setArchived(rows, !rows[0].archivedAt);
   });
   $("new-item").addEventListener("click", () => {
     if (editor.saving) return;
@@ -513,6 +551,7 @@ try {
       attachTarget = id;
       $("file-input").click();
     },
+    onChangeArchive: (item) => setArchived([item], !item.archivedAt),
   });
   editor.clear();
   bind();

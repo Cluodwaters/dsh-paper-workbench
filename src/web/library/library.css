@@ -1000,6 +1000,11 @@ small {
   border-bottom: 2px solid var(--h-muted);
   font-weight: 600;
 }
+.detail-tabs .detail-trash-action {
+  margin-left: auto;
+  color: var(--green);
+  white-space: nowrap;
+}
 .detail-scroll {
   padding: 21px 21px 28px;
   overflow: auto;
