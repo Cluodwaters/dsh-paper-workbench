@@ -164,6 +164,13 @@ test(
     const documents = await (await get("/api/documents")).json();
     assert.equal(documents.length, 1);
     assert.equal(documents[0].originalName, "Host验证.pdf");
+    const detail = await (await get(`/api/documents/${documents[0].id}`)).json();
+    assert.deepEqual(detail.attachment, documents[0]);
+    assert.equal((await get(`/api/documents/${randomUUID()}`)).status, 404);
+    const shutdown = await post("/api/shutdown", { expectedPid: backendPid });
+    assert.equal(shutdown.status, 403);
+    assert.equal((await shutdown.json()).error.code, "HOST_ONLY");
+    assert.equal((await get("/api/health")).status, 200);
     const tools = [];
     await agentCreated({
       agent: {

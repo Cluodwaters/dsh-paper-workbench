@@ -855,14 +855,16 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       })
     }
     let url
+    let pathname
     try {
       url = new URL(request.url, 'http://127.0.0.1')
+      // Match the backend's pathname decoding before applying the route boundary.
+      pathname = decodeURIComponent(url.pathname)
     } catch {
       return sendJson(response, 400, {
         error: { code: 'PAPER_WORKBENCH_URL', message: '请求路径无效' },
       })
     }
-    const pathname = url.pathname
     if (pathname === `${BASE_PATH}/__workbench/storage/prepare` && request.method === 'POST') {
       try {
         const status = supervisor.status()
@@ -874,8 +876,8 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
         return sendJson(response, 409, { error: { code: 'STORAGE_LOCATION', message: error.message } })
       }
     }
-    if (pathname.startsWith(`${BASE_PATH}/api/agents/internal/`)) {
-      return sendJson(response,403,{error:{code:'HOST_ONLY',message:'内部 Agent 接口仅供宿主使用。'}})
+    if (pathname === `${BASE_PATH}/api/shutdown` || pathname.startsWith(`${BASE_PATH}/api/agents/internal/`)) {
+      return sendJson(response, 403, { error: { code: 'HOST_ONLY', message: '此接口仅供宿主使用。' } })
     }
     const agentRoute=pathname.match(/^\/paper-workbench\/__workbench\/agents\/([a-z-]+)$/)
     if(agentRoute && request.method==='POST') {
@@ -972,12 +974,6 @@ function createBackendClient(supervisor) {
     return data
   }
 
-  async function documents() {
-    const data = await request('/api/documents')
-    if (!Array.isArray(data)) throw new PaperToolError('PAPER_WORKBENCH_ERROR', '本地文献服务返回了无效的附件列表')
-    return data
-  }
-
   async function attachment(attachmentId) {
     if (typeof attachmentId !== 'string' || !/^[a-f0-9-]+$/.test(attachmentId)) {
       throw new PaperToolError('PAPER_WORKBENCH_ARGUMENT', 'attachmentId 必须是从文献库取得的稳定附件标识')
@@ -987,7 +983,7 @@ function createBackendClient(supervisor) {
     return found
   }
 
-  return { request, documents, attachment }
+  return { request, attachment }
 }
 
 class PaperToolError extends Error {

@@ -14,6 +14,14 @@ import { FulltextRepository } from "./fulltext-repository.mjs";
 import { searchKey } from "../domain/bibliography.mjs";
 import { AgentRepository } from "./agent-repository.mjs";
 
+const documentRows = `SELECT a.id, a.item_id AS itemId, a.sample_key AS sampleKey,
+  a.original_name AS originalName, a.sha256 AS sourceHash, a.page_count AS pages,
+  a.byte_length AS bytes, json_extract(i.csl_json,'$.title') AS title, d.revision,
+  (SELECT count(*) FROM annotations n WHERE n.attachment_id=a.id) AS annotationCount
+  FROM attachments a
+  JOIN library_items i ON i.id=a.item_id
+  JOIN annotation_documents d ON d.attachment_id=a.id`;
+
 export class SqliteStore {
   constructor(filename, { autoRead = false } = {}) {
     mkdirSync(path.dirname(filename), { recursive: true });
@@ -100,15 +108,12 @@ export class SqliteStore {
     return attachmentId;
   }
   list() {
-    return this.db
-      .prepare(
-        `SELECT a.id, a.item_id AS itemId, a.sample_key AS sampleKey, a.original_name AS originalName,
-      a.sha256 AS sourceHash, a.page_count AS pages, a.byte_length AS bytes,
-      json_extract(i.csl_json,'$.title') AS title, d.revision,
-      (SELECT count(*) FROM annotations n WHERE n.attachment_id=a.id) AS annotationCount
-      FROM attachments a JOIN library_items i ON i.id=a.item_id JOIN annotation_documents d ON d.attachment_id=a.id ORDER BY a.sample_key`,
-      )
-      .all();
+    return this.db.prepare(`${documentRows} ORDER BY a.sample_key`).all();
+  }
+  document(id) {
+    const row = this.db.prepare(`${documentRows} WHERE a.id=?`).get(id);
+    if (!row) throw new AppError("NOT_FOUND", "Document not found", 404);
+    return row;
   }
   attachment(id) {
     const row = this.db

@@ -219,7 +219,7 @@ const server = http.createServer(async (request, response) => {
       request.method === "GET"
     )
       return json(response, 200, {
-        attachment: store.list().find((x) => x.id === match[1]),
+        attachment: store.document(match[1]),
         snapshot: store.snapshot(match[1]),
         readingState: store.readingState(match[1]),
         embeddedAnnotations: await sources.inspect(store.attachment(match[1])),

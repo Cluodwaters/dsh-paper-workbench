@@ -1,6 +1,6 @@
 # 文献工作台市场收录与更新
 
-文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.8。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
+文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.9。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
 
 ## 提交内容
 
@@ -29,6 +29,11 @@ https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-
 ## 验证范围
 
 发布前检查版本、组合包声明、独立运行时、外部生产依赖和 Release 哈希。浏览器及更新验收使用源码目录外的打包副本、隔离配置和合成资料，并用 dshmarket 的发布源识别及版本检查逻辑验证更新通道。
+
+v0.2.8 验证记录
+
+- Windows x64 下，DSH 0.2.2-rc.1、rc.2 和 rc.3 均通过打包安装及浏览器回归。rc.3 另通过 OCR、自动初读和 v0.2.7 覆盖升级验证。
+- 通过固定 `latest` 地址重下载完整安装包并核对 SHA-256。dshmarket 1.73.14 在隔离配置中识别 v0.2.7 的更新，v0.2.8 安装后不再重复提示。
 
 v0.2.7 验证记录：
 

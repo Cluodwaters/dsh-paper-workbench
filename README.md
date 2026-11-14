@@ -1,6 +1,6 @@
 # 文献工作台 · DeepSeek Harness 插件
 
-在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.8**，面向 **Windows x64 + DSH 0.2.2-rc.1 至 rc.3**。
+在 DeepSeek Harness（DSH）中整理、阅读和批注文献，按需打开 AI 侧栏。当前插件版本 **0.2.9**，面向 **Windows x64 + DSH 0.2.2-rc.1 至 rc.3**。
 
 **[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)**
 
@@ -50,7 +50,7 @@
 | 下载文件 | 用途 |
 |---|---|
 | **`dsh-paper-workbench-windows-x64.tgz`** | **完整安装包；固定文件名用于商店的在线更新通道** |
-| `dsh-paper-workbench-0.2.8.tgz` | 同一安装包的带版本文件名副本，用于手动安装与归档 |
+| `dsh-paper-workbench-0.2.9.tgz` | 同一安装包的带版本文件名副本，用于手动安装与归档 |
 | `dsh-paper-workbench-0.2.7-sources.tar.gz` | 开发者源码，包含固定版本上游源码；按 `BUILD.md` 构建后才能安装 |
 | GitHub 自动生成的 `Source code (zip / tar.gz)` | 仓库源码快照；不能作为插件安装 |
 | `SHA256SUMS.txt` | 下载文件的校验值 |
