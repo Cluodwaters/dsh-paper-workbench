@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { mkdtempSync, mkdirSync, readFileSync } from "node:fs";
 import { apply } from "../plugins/dsh-paper-workbench/index.js";
 import { projectRoot } from "../src/config.mjs";
@@ -14,6 +15,7 @@ test(
     mkdirSync(root, { recursive: true });
     const dataRoot = mkdtempSync(path.join(root, "run-"));
     let handler, agentCreated, agentPreStep, backendPid;
+    let connectionReady = true;
     const disposers = [];
     const server = http.createServer((request, response) =>
       handler
@@ -37,7 +39,7 @@ test(
       get(name) {
         if(name==='agents')return agentRegistry;
         if(name==='sessions')return {async flush(){}};
-        return name === "connection"
+        return name === "connection" && connectionReady
           ? {
               requestRejection({ headers }) {
                 return headers.cookie === "harness-test=1" ? null : 401;
@@ -104,6 +106,9 @@ test(
     }
     assert.equal(status.ready, true, JSON.stringify(status));
     backendPid = status.pid;
+    connectionReady = false;
+    assert.equal((await get("/__workbench/status")).status, 503);
+    connectionReady = true;
     assert.equal(
       (await fetch(origin + "/paper-workbench/api/health")).status,
       401,
@@ -306,6 +311,30 @@ test(
         selectionText: "New selection",
       },
     });
+    const requestId = randomUUID();
+    assert.equal(
+      (await post("/__workbench/paper-context", {
+        sessionId: paperSessionId,
+        requestId,
+        context: { ...paperContext, sourceHash: "a".repeat(64) },
+      })).status,
+      409,
+    );
+    assert.equal(
+      (await post("/__workbench/paper-context", {
+        sessionId: paperSessionId,
+        requestId,
+        context: paperContext,
+      })).status,
+      200,
+    );
+    const queuedRequest = await agentPreStep(
+      { agent: paperAgent, step: 1, signal, messages: [{ source: { kind: "user", rpcId: requestId } }] },
+      async () => decision,
+    );
+    const queuedText = queuedRequest.messages.at(-1).content[0].text;
+    assert.match(queuedText, /当前页=2/);
+    assert.ok(queuedText.includes(paperContext.selectionText));
     const nextRequest = await agentPreStep(
       { agent: paperAgent, step: 7, signal },
       async () => decision,
@@ -314,5 +343,23 @@ test(
     assert.ok(
       nextRequest.messages.at(-1).content[0].text.includes("New selection"),
     );
+
+    const previousPid = backendPid;
+    const restarts = await Promise.all([
+      post("/__workbench/restart", {}),
+      post("/__workbench/restart", {}),
+    ]);
+    assert.deepEqual(restarts.map((result) => result.status), [202, 202]);
+    for (let i = 0; i < 150; i++) {
+      status = await (await get("/__workbench/status")).json();
+      if (status.ready && status.pid !== previousPid) break;
+      if (status.phase === "failed") assert.fail(status.error);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.ok(status.ready && status.pid !== previousPid, JSON.stringify(status));
+    backendPid = status.pid;
+    assert.throws(() => process.kill(previousPid, 0), { code: "ESRCH" });
+    assert.equal((await (await get("/api/documents")).json())[0].id, documents[0].id);
+    assert.equal(status.logs.filter((line) => line.includes("manual restart requested")).length, 1);
   },
 );

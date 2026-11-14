@@ -297,33 +297,19 @@ async function main() {
      * bypass the host's model authorization.
      */
     async function selectModelIfNeeded() {
-      const needed = await evaluate(
-        session,
-        `[...document.querySelectorAll("button")].some((node) => (node.textContent || "").trim() === "请选择模型")`,
-      )
-      if (!needed) return false
-      await evaluate(
-        session,
-        `(() => { const node = [...document.querySelectorAll("button")].find((n) => (n.textContent || "").trim() === "请选择模型"); node.click(); return true })()`,
-      )
-      await waitFor(
-        session,
-        `[...document.querySelectorAll("[role=menuitem], [role=option], button")].some((node) => node.offsetParent !== null && /DeepSeek-V4|deepseek-flash/i.test(node.textContent || ""))`,
-        { timeoutMs: 15000 },
-      )
-      await evaluate(
-        session,
-        `(() => {
-          const node = [...document.querySelectorAll("[role=menuitem], [role=option], button")].find((n) => n.offsetParent !== null && /DeepSeek-V4|deepseek-flash/i.test(n.textContent || ""))
-          node.click()
-          return true
-        })()`,
-      )
-      await waitFor(
-        session,
-        `![...document.querySelectorAll("button")].some((node) => (node.textContent || "").trim() === "请选择模型")`,
-        { timeoutMs: 20000 },
-      )
+      const picker = `[...document.querySelectorAll('.pw-conversation-host button')]
+        .find(node => /^(请选择模型|Select a model)$/iu.test(node.textContent.trim()))`
+      if (!await evaluate(session, `Boolean(${picker})`)) return false
+      await evaluate(session, `(${picker}).click()`)
+      const model = typeof args.model === 'string' ? args.model.toLowerCase() : null
+      const matchesModel = model
+        ? `name => name.toLowerCase().includes(${JSON.stringify(model)})`
+        : `name => /DeepSeek-V4|deepseek-flash/i.test(name)`
+      const choice = `[...document.querySelectorAll('[role=menuitem], [role=option], button')]
+        .find(node => node.offsetParent !== null && (${matchesModel})(node.textContent || ''))`
+      await waitFor(session, `Boolean(${choice})`, { timeoutMs: 15000 })
+      await evaluate(session, `(${choice}).click()`)
+      await waitFor(session, `!(${picker})`, { timeoutMs: 20000 })
       return true
     }
 

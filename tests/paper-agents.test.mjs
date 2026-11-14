@@ -68,6 +68,27 @@ const digest = {
   evidencePages: [0],
 };
 
+test("archiving blocks a queued claim and stale failures cannot overwrite cancellation", (t) => {
+  const { store, id } = setup(t);
+  const [job] = store.agents.pending();
+  const item = store.library.get(store.attachment(id).itemId);
+  store.library.batch({
+    requestId: randomUUID(),
+    items: [{ id: item.id, expectedRevision: item.revision }],
+    changes: { archived: true },
+  });
+  assert.throws(() => store.agents.claim(job.id), { code: "ITEM_ARCHIVED" });
+  assert.deepEqual(store.agents.pending(), []);
+  assert.throws(
+    () => store.agents.stop(job.id, "failed", "stale error", undefined, "queued"),
+    { code: "JOB_STATE_CHANGED" },
+  );
+  const cancelled = store.agents.job(job.id);
+  assert.equal(cancelled.state, "cancelled");
+  assert.equal(cancelled.lease_token, null);
+  assert.equal(cancelled.lease_until, null);
+});
+
 test("missing or malformed agent IDs are rejected before binding SQLite parameters", async (t) => {
   const { service } = setup(t);
   for (const action of ["bind", "topics", "topic"])

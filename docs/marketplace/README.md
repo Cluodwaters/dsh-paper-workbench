@@ -1,6 +1,6 @@
 # 文献工作台市场收录与更新
 
-文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.7。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
+文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.8。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
 
 ## 提交内容
 
@@ -8,7 +8,7 @@
 
 - 条目指向插件子目录，清单声明 `dsh.bundle.patch`，仓库已有 `dsh-plugin` topic。
 - `docs` 分类，中英文功能说明，PNG 图标及清单旁的 `screenshots.json`；截图仅用合成文献。
-- 发行包包含独立 Node 25.8.1、后台生产依赖、Reader、OCR 资源及许可证。仅支持 Windows x64，已验证 DSH 0.2.2-rc.1。
+- 发行包包含独立 Node 25.8.1、后台生产依赖、Reader、OCR 资源及许可证。安装包面向 Windows x64 和 DSH 0.2.2-rc.1 至 rc.3。
 - 新导入论文默认触发 AI 初读，使用用户自己的 DSH 模型；`autoRead: false` 可关闭。普通整理阅读不需要模型。
 - 仓库创建于 2026-11-06 13:15:17 UTC，2026-11-07 21:15:17（北京时间）满 24 小时。若提交时尚未达标，明确保留年龄检查；上游 `regate.yml` 会周期复查非草稿 PR，年龄失败存在 24 小时复查冷却，不承诺达标时立即自动通过。
 

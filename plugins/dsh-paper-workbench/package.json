@@ -1,6 +1,6 @@
 {
   "name": "dsh-paper-workbench",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": true,
   "type": "module",
   "description": "Paper Workbench as a native DeepSeek Harness workspace: library, PDF reading and an on-demand embedded Agent panel.",

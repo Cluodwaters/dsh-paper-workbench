@@ -36,15 +36,13 @@ export function renderRows(result, state) {
   }
   $("previous-page").disabled = result.offset === 0;
   $("next-page").disabled = result.offset + result.limit >= result.total;
-  $("select-all").checked =
-    result.items.length > 0 &&
-    result.items.every((item) => state.checked.has(item.id));
-  $("select-all").indeterminate =
-    result.items.some((item) => state.checked.has(item.id)) &&
-    !$("select-all").checked;
   renderSelection(state);
 }
 export function renderSelection(state) {
+  $("select-all").checked =
+    state.rows.length > 0 && state.checked.size === state.rows.length;
+  $("select-all").indeterminate =
+    state.checked.size > 0 && !$("select-all").checked;
   $("selection-bar").hidden = state.checked.size === 0;
   $("selected-count").textContent = state.checked.size;
 }

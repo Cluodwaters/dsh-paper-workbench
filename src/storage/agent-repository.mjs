@@ -271,14 +271,14 @@ export class AgentRepository {
   pending() {
     this.db
       .prepare(
-        "UPDATE paper_jobs SET state='queued',lease_token=NULL,lease_until=NULL,error='上次运行中断，等待继续' WHERE state='running' AND lease_until<?",
+        "UPDATE paper_jobs SET state='queued',lease_token=NULL,lease_until=NULL,error='上次运行中断，等待继续',updated_at=? WHERE state='running' AND lease_until<?",
       )
-      .run(Date.now());
+      .run(now(), Date.now());
     this.db
       .prepare(
-        "UPDATE paper_jobs SET state='cancelled',error='论文已移入回收站',lease_token=NULL WHERE state IN ('queued','running') AND attachment_id IN (SELECT a.id FROM attachments a JOIN item_metadata m ON m.item_id=a.item_id WHERE m.archived_at IS NOT NULL)",
+        "UPDATE paper_jobs SET state='cancelled',error='论文已移入回收站',lease_token=NULL,lease_until=NULL,updated_at=? WHERE state IN ('queued','running') AND attachment_id IN (SELECT a.id FROM attachments a JOIN item_metadata m ON m.item_id=a.item_id WHERE m.archived_at IS NOT NULL)",
       )
-      .run();
+      .run(now());
     return this.db
       .prepare(
         "SELECT * FROM paper_jobs WHERE state='queued' ORDER BY CASE kind WHEN 'research' THEN 0 ELSE 1 END,created_at LIMIT 10",
@@ -296,6 +296,12 @@ export class AgentRepository {
         409,
       );
       const a = this.store.attachment(job.attachment_id);
+      requireValue(
+        !this.store.library.get(a.itemId).archivedAt,
+        "ITEM_ARCHIVED",
+        "回收站中的论文不运行 AI。",
+        409,
+      );
       requireValue(
         a.sourceHash === job.source_hash,
         "SOURCE_CHANGED",
@@ -338,7 +344,7 @@ export class AgentRepository {
       .run(Date.now() + 90000, id);
     return { ok: true };
   }
-  stop(id, state, error, token) {
+  stop(id, state, error, token, expectedState) {
     requireValue(
       ["failed", "cancelled", "queued"].includes(state),
       "JOB_STATE",
@@ -346,6 +352,13 @@ export class AgentRepository {
     );
     const job = this.job(id);
     if (token) this.active(id, token);
+    if (expectedState)
+      requireValue(
+        job.state === expectedState,
+        "JOB_STATE_CHANGED",
+        "任务状态已变化。",
+        409,
+      );
     requireValue(
       job.state !== "completed",
       "JOB_FINISHED",

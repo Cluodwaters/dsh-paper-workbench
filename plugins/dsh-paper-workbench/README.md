@@ -1,14 +1,14 @@
 # 文献工作台 · DeepSeek Harness 插件
 
-**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)** · 已验证 DSH **0.2.2-rc.1**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)** · 适配 DSH **0.2.2-rc.1 至 rc.3**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
 界面继承 DSH 的文本字体。默认正文 15px、列表论文标题 16px、常用控件 14px、作者与期刊 13px、辅助标签至少 12px；在 DSH 中增大内容字号时，文献库、表单与工具页同步放大。阅读器细栏限制在可容纳的字号，保留 36px 高度；PDF 正文仍由阅读器独立控制缩放。
 
-进入工作台时自动收起 DSH 侧栏。在已验证的 Windows 桌面版中，工作台导航合并到原生顶栏，暂时隐藏 DSH 的新建会话、应用和编辑按钮，保留系统最小化、最大化和关闭控件。点击最左侧的侧栏图标「返回 DSH 上次会话」，会先确认当前页面已保存，再恢复原会话和宿主控件；未保存的编辑表单或保存失败会阻止返回。再次进入工作台保留论文、页码和 AI 侧栏设置。
+进入工作台时临时隐藏 DSH 侧栏，退出后恢复原有宽度。在已验证的 Windows 桌面版中，工作台导航合并到原生顶栏，暂时隐藏 DSH 的新建会话、应用和编辑按钮，保留系统最小化、最大化和关闭控件。点击最左侧的侧栏图标「返回 DSH 上次会话」，会先确认当前页面已保存，再恢复原会话和宿主控件；未保存的编辑表单或保存失败会阻止返回。再次进入工作台保留论文、页码和 AI 侧栏设置。
 
-顶栏适配针对 DSH 0.2.2-rc.1 的布局标记；插件卸载或离开主面板时撤销所有临时样式标记。使用宿主公开的 `layout.toggleSidebar()` 和 `layout.selectPanel(null)`，不修改 DSH 安装文件，不改变主会话绑定。未知宿主结构保留普通工作台导航，不尝试替换窗口控件；浏览器版使用普通顶栏。
+插件用宿主公开的 `layout.selectPanel(null)` 返回原会话。窄浏览器窗口里的抽屉侧栏通过 `layout.toggleSidebar()` 收起。离开工作台时撤销临时样式，未知布局继续显示普通工作台导航。
 
 拖动 AI 侧栏左边的分隔线可调整宽度，并在重新打开后恢复。分隔线支持左右方向键（按住 Shift 加快）、Home/End 和双击恢复默认。窄窗口改为上下布局，重新加宽后恢复偏好的侧栏宽度。
 
@@ -45,7 +45,7 @@ flowchart LR
 ```
 
 - **主助手**只通过目录与摘要工具访问标题、作者、期刊、年份、标签、阅读状态等元数据及已保存摘要。原文、原文摘要字段、PDF 路径和完整论文对话不进入主助手工具返回值。按用户要求可修改标签、收藏与阅读状态，仍检查最新资料库版本。
-- **论文阅读助手**绑定稳定的 `attachmentId + sourceHash`，只能读本篇。选区和页码由 Host 注入；主会话不接收这些上下文。
+- **论文阅读助手**绑定稳定的 `attachmentId + sourceHash`，只能读本篇。翻译、解释和快速提问使用提交当时的选区和页码，原生输入框使用当前阅读上下文。
 - **委派助手**是绑定同一论文的另一个 DSH 会话，有任务 ID、租约和所有者。它先读旧摘要，再按需读相关页并保存合并结果；主助手只取回状态与摘要。委派消息不进入用户阅读对话。
 - **后台调度器**复用 DSH 的 Agent、模型选择、持久化与原生工具执行。最多并发 2 个任务，自动初读最多占 1 个名额；委派优先，同篇任务串行。空闲 Agent 会释放，持久化会话保留。
 
@@ -84,7 +84,7 @@ dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workb
 
 手动安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-windows-x64.tgz`。下载公开，无需登录 GitHub；本地文件来源不自动跟随线上发布。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
 
-宿主：DSH `0.2.2-rc.1`，已验证 Windows x64。插件自带 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。其他 DSH 版本尚未实测。
+Windows x64 安装包适配 DSH `0.2.2-rc.1` 至 `0.2.2-rc.3`。包内包含 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。
 
 以下命令仅用于开发者构建；前置依赖见仓库根目录 `BUILD.md`：
 

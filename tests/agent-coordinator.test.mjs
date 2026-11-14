@@ -44,6 +44,10 @@ function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
         return { ...job };
       }
       if (action === "job") return { ...job };
+      if (action === "publish") {
+        job.state = "completed";
+        return { version: 1 };
+      }
       if (action === "stop") {
         job.state = body.state;
         return { ...job };
@@ -279,6 +283,17 @@ test("shutdown requeues active work and keeps checkpoints for restart", async ()
   await f.coordinator.stop();
   assert.equal(f.job.state, "queued");
   assert.equal(f.messages.length, 1);
+});
+
+test("publishing a digest without identified metadata returns lossless JSON", async (t) => {
+  const f = fixture({ wait: true });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.messages.length === 1);
+  const tool = f.definitions.find((d) => d.name === "paper_publish_digest");
+  const result = await tool.execute({ digest: {} });
+  assert.deepEqual(result, { saved: true, version: 1, metadata: null });
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), result);
 });
 
 test("saving a conversation summary does not prematurely hide the user-facing answer", async (t) => {

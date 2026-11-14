@@ -224,7 +224,7 @@ export class PaperAgentService {
       case "heartbeat":
         return r.heartbeat(input.id, input.token);
       case "stop":
-        return r.stop(input.id, input.state, input.error, input.token);
+        return r.stop(input.id, input.state, input.error, input.token, input.expectedState);
       case "next":
         return this.next(input.id, input.token);
       case "checkpoint":

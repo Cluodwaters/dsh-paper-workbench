@@ -28,7 +28,10 @@ const workbenchEntry = () => page.getByRole('button', { name:'文献工作台', 
 const openWorkbench = async () => {
   await workbenchEntry().click()
   await page.locator('.pw-return').waitFor()
-  await page.waitForFunction(() => document.querySelector('[data-pw-shell]')?.hasAttribute('data-sidebar-collapsed'))
+  await page.waitForFunction(() => {
+    const sidebar = document.querySelector('[data-pw-host-sidebar]')
+    return sidebar && getComputedStyle(sidebar).display === 'none'
+  })
 }
 try {
   await page.goto(instance.url)
@@ -48,13 +51,17 @@ try {
     menu.style.cssText = 'position:fixed;top:0;left:80px;height:40px;z-index:1100'
     document.body.append(menu)
   })
-  const wasCollapsed = await page.locator('[data-shell-overlay]').evaluate(el => el.parentElement.hasAttribute('data-sidebar-collapsed'))
+  const sidebarWidth = async () => page.locator('[data-shell-overlay]').evaluate(
+    el => parseFloat(getComputedStyle(el.parentElement).gridTemplateColumns.split(' ')[0]),
+  )
+  const initialSidebarWidth = await sidebarWidth()
   await openWorkbench()
   assert.equal(await page.locator('[data-windows-menu]').isVisible(), false)
   assert.equal(await page.locator('[data-sidebar-toggle]').first().isVisible(), false)
   assert.equal((await page.locator('.pw-header').boundingBox()).y, 0)
   assert.equal((await page.locator('.pw-body').boundingBox()).y, 40)
-  pass('Entry collapses the native sidebar, hides Host controls and merges navigation into the caption')
+  assert.equal(await sidebarWidth(), 0)
+  pass('Entry hides Host controls and merges navigation into the caption')
 
   for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({colorScheme:scheme})
@@ -89,7 +96,10 @@ try {
   assert.equal(await page.title(), mainTitle)
   assert.equal(await page.locator('[data-windows-menu]').isVisible(), true)
   assert.equal(await page.locator('[data-pw-focus], [data-pw-shell], [data-pw-host-sidebar]').count(), 0)
-  assert.equal(await page.locator('[data-shell-overlay]').evaluate(el=>el.parentElement.hasAttribute('data-sidebar-collapsed')), wasCollapsed)
+  await page.waitForFunction(width => {
+    const frame = document.querySelector('[data-shell-overlay]')?.parentElement
+    return frame && parseFloat(getComputedStyle(frame).gridTemplateColumns.split(' ')[0]) === width
+  }, initialSidebarWidth)
   pass('Unsaved forms block return; a successful return restores the original conversation, draft and Host controls')
 
   await page.evaluate(async base64 => {

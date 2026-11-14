@@ -38,7 +38,7 @@ const PAPER_CONTEXT_LIMIT = 64
 const MAX_CONTEXT_SELECTION = 8000
 const MAX_PAPER_CONTEXT_BODY = 256 * 1024
 
-export const inject = ['webServer']
+export const inject = ['webServer', 'connection']
 
 // Volatile keeps a settings write from unloading an in-use reader or backend.
 // The captured plan is applied only on the next full Host/plugin startup.
@@ -250,11 +250,20 @@ export function appendPaperContext(decision, context, step) {
 /** Host-owned, bounded registry of the paper context for each paper Session. */
 export function createPaperContextStore(limit = PAPER_CONTEXT_LIMIT) {
   const entries = new Map()
+  const pending = new Map()
   return {
-    set(sessionId, input) {
+    set(sessionId, input, requestId) {
       if (typeof sessionId !== 'string' || sessionId.length === 0 || sessionId.length > 200) return false
       const context = normalizePaperContext(input)
       if (!context) return false
+      if (requestId !== undefined) {
+        if (!isStableId(requestId)) return false
+        const key = JSON.stringify([sessionId, requestId])
+        pending.delete(key)
+        pending.set(key, context)
+        while (pending.size > limit * 2) pending.delete(pending.keys().next().value)
+        return true
+      }
       const previous = entries.get(sessionId)
       if (previous) {
         // Injection diagnostics describe the Session, not one context revision:
@@ -270,8 +279,9 @@ export function createPaperContextStore(limit = PAPER_CONTEXT_LIMIT) {
       }
       return true
     },
-    get(sessionId) {
-      return entries.get(sessionId)
+    get(sessionId, requestId) {
+      const submitted = requestId && pending.get(JSON.stringify([sessionId, requestId]))
+      return submitted || entries.get(sessionId)
     },
     markInjected(sessionId) {
       const entry = entries.get(sessionId)
@@ -319,6 +329,7 @@ function createSupervisor(ctx, options) {
   let restartTimer = null
   let rotating = false
   let starting = null
+  let restarting = null
   let stoppingTask = null
   let runtime = null
   let runtimeProgress = null
@@ -423,12 +434,13 @@ function createSupervisor(ctx, options) {
       if (stopping) throw new Error('插件正在卸载')
       if (!child) throw new Error('本地服务进程未启动')
       try {
+        const startingChild = child
         const { body, integration } = await health()
+        if (stopping || child !== startingChild) throw new Error('本地服务在启动期间退出')
         state.integration = integration
         state.phase = 'ready'
         state.ready = true
         state.error = null
-        state.attempts = 0
         state.startedAt = Date.now()
         appendLog(`[harness] local backend ready on 127.0.0.1:${state.port} (pid ${state.pid}, schema ${body.schemaVersion})`)
         ctx.logger?.info?.(`paper-workbench: local backend ready on 127.0.0.1:${state.port}`)
@@ -494,7 +506,26 @@ function createSupervisor(ctx, options) {
       }, 4000)
       const deadline = setTimeout(() => done(new Error('本地服务未能停止，请稍后重试')), 12000)
       current.once('exit', onExit)
-      try { current.kill() } catch (error) { done(error) }
+      if (state.port) {
+        void fetch(`http://127.0.0.1:${state.port}${BASE_PATH}/api/shutdown`, {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${token}`,
+            'content-type': 'application/json',
+            'x-paper-workbench': '1',
+          },
+          body: JSON.stringify({ expectedPid: pid }),
+          signal: AbortSignal.timeout(3000),
+        }).then(response => {
+          if (!response.ok) throw new Error(`后台关闭请求返回 ${response.status}`)
+        }).catch(() => {
+          if (current.exitCode === null && current.signalCode === null) {
+            try { current.kill() } catch (error) { done(error) }
+          }
+        })
+      } else {
+        try { current.kill() } catch (error) { done(error) }
+      }
     })
   }
 
@@ -578,7 +609,9 @@ function createSupervisor(ctx, options) {
       await waitReady(Date.now() + Math.max(5000, Number(options.startupTimeoutMs) || 120000))
     } catch (error) {
       if (!stopping) fail(error)
-      if (child) await killChild()
+      if (child) {
+        await killChild().catch(stopError => appendLog(`[harness] ${stopError.message}`))
+      }
     }
   }
 
@@ -596,7 +629,7 @@ function createSupervisor(ctx, options) {
       clearTimeout(restartTimer)
       restartTimer = null
     }
-    await killChild()
+    await (restarting || killChild())
     state.ready = false
     state.phase = 'stopped'
     try {
@@ -607,8 +640,13 @@ function createSupervisor(ctx, options) {
     logStream = null
   }
 
-  async function restart() {
-    if (stoppingTask) return
+  function restart() {
+    if (stoppingTask) return stoppingTask
+    if (!restarting) restarting = restartBackend().finally(() => { restarting = null })
+    return restarting
+  }
+
+  async function restartBackend() {
     appendLog('[harness] manual restart requested')
     stopping = true
     if (restartTimer) {
@@ -630,12 +668,8 @@ function createSupervisor(ctx, options) {
 
 function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation = () => undefined) {
   const origin = new URL(ctx.webServer.getOrigin())
-  const allowedHosts = new Set([origin.host, `localhost:${origin.port}`, `127.0.0.1:${origin.port}`])
-  const allowedOrigins = new Set([
-    ctx.webServer.getOrigin(),
-    `http://localhost:${origin.port}`,
-    `http://127.0.0.1:${origin.port}`,
-  ])
+  const localPort = origin.port ? `:${origin.port}` : ''
+  const allowedHosts = new Set([origin.host, `localhost${localPort}`, `127.0.0.1${localPort}`])
 
   function sendJson(response, status, value) {
     const text = JSON.stringify(value)
@@ -694,7 +728,7 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
   function checkWriteOrigin(request) {
     const originHeader = request.headers.origin
     if (!originHeader) return true
-    return allowedOrigins.has(String(originHeader))
+    return originHeader === `${origin.protocol}//${request.headers.host}`
   }
 
   function isWriteRequest(request) {
@@ -711,14 +745,15 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       return { status: 403, code: 'PAPER_WORKBENCH_HOST', message: '不支持的主机名' }
     }
     const connection = ctx.get('connection')
-    if (connection && typeof connection.requestRejection === 'function') {
-      const rejection = connection.requestRejection({ headers: request.headers })
-      if (rejection) {
-        return {
-          status: rejection,
-          code: 'PAPER_WORKBENCH_AUTH',
-          message: rejection === 401 ? '需要已登录的 Harness 浏览器会话' : '请求来源不受信任',
-        }
+    if (typeof connection?.requestRejection !== 'function') {
+      return { status: 503, code: 'PAPER_WORKBENCH_AUTH', message: 'Harness 浏览器会话服务尚未就绪' }
+    }
+    const rejection = connection.requestRejection(request)
+    if (rejection) {
+      return {
+        status: rejection,
+        code: 'PAPER_WORKBENCH_AUTH',
+        message: rejection === 401 ? '需要已登录的 Harness 浏览器会话' : '请求来源不受信任',
       }
     }
     if (isWriteRequest(request) && !checkWriteOrigin(request)) {
@@ -781,6 +816,10 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
           response.end()
           return
         }
+        upstreamResponse.on('error', () => response.destroy())
+        response.on('close', () => {
+          if (!response.writableEnded) upstreamResponse.destroy()
+        })
         upstreamResponse.pipe(response)
       },
     )
@@ -853,12 +892,15 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       if (request.method === 'POST') {
         try {
           const input = await readJsonBody(request)
-          const binding=coordinator.binding(input?.sessionId)
-          if(!binding || binding.role!=='paper' || binding.attachment_id!==input?.context?.attachmentId) {
-            return sendJson(response,403,{error:{code:'SESSION_SCOPE',message:'此会话未绑定该论文。'}})
+          const binding = coordinator.binding(input?.sessionId)
+          if (binding?.role !== 'paper' || binding.attachment_id !== input?.context?.attachmentId) {
+            return sendJson(response, 403, { error: { code: 'SESSION_SCOPE', message: '此会话未绑定该论文。' } })
           }
-          const stored = Boolean(input) && paperContexts.set(input.sessionId, input.context)
-          if (!stored) {
+          const context = normalizePaperContext(input.context)
+          if (context && binding.source_hash !== context.sourceHash) {
+            return sendJson(response, 409, { error: { code: 'SOURCE_CHANGED', message: '论文版本已变化，请重新打开。' } })
+          }
+          if (!context || !paperContexts.set(input.sessionId, context, input.requestId)) {
             return sendJson(response, 400, {
               error: { code: 'PAPER_CONTEXT_INVALID', message: '论文上下文无效' },
             })
@@ -878,7 +920,7 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       request.resume()
       sendJson(response, 202, { restarting: true })
       setTimeout(() => {
-        void supervisor.restart()
+        void supervisor.restart().catch(error => ctx.logger?.warn?.(`paper-workbench: restart failed: ${error.message}`))
       }, 40)
       return
     }
@@ -1022,13 +1064,16 @@ export function apply(ctx, rawConfig) {
     () =>
       ctx.on(
         'agent/pre-step',
-        async ({ agent, step, signal }, next) => {
+        async ({ agent, messages, step, signal }, next) => {
           const decision = await next()
           if (!decision || decision.kind !== 'enter' || signal.aborted) return decision
-          await coordinator.beforeStep(agent,step,signal,decision)
+          await coordinator.beforeStep(agent, step, signal, decision)
+          if (signal.aborted) return decision
           const sessionId = agent && typeof agent.id === 'string' ? agent.id : undefined
-          const context = sessionId ? paperContexts.get(sessionId) : undefined
-          if (!context || coordinator.binding(sessionId)?.role!=='paper') return decision
+          if (!sessionId || coordinator.binding(sessionId)?.role !== 'paper') return decision
+          const request = messages?.findLast(message => message.source?.kind === 'user')
+          const context = paperContexts.get(sessionId, request?.source.rpcId)
+          if (!context) return decision
           const injected = appendPaperContext(decision, context, step)
           if (injected !== decision) paperContexts.markInjected(sessionId)
           return injected

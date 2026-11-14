@@ -12,11 +12,12 @@ export function openWorkbench(value) {
   const url = new URL(appUrl(value), location.href);
   if (embedded && url.origin === origin) {
     if (url.pathname.endsWith("/reader.html")) {
+      const page = url.searchParams.get("page");
       send({
         type: "paper-workbench:open",
         view: "reader",
         attachmentId: url.searchParams.get("id"),
-        pageIndex: Number(url.searchParams.get("page") || 0),
+        ...(page !== null ? { pageIndex: Number(page) } : {}),
       });
       return;
     }

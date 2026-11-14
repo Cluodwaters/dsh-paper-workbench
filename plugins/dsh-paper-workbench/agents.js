@@ -26,7 +26,7 @@ export function createAgentCoordinator(
     attached = new WeakSet(),
     sessionState = new WeakMap();
   let stopped = false,
-    pumping = false,
+    pumping,
     timer;
   const call = (action, body = {}) =>
     backend.request(`/api/agents/internal/${action}`, { method: "POST", body });
@@ -314,7 +314,7 @@ export function createAgentCoordinator(
           return {
             saved: true,
             version: result.version,
-            metadata: result.metadata,
+            metadata: result.metadata ?? null,
           };
         },
       ),
@@ -434,6 +434,8 @@ export function createAgentCoordinator(
     });
   }
   async function open(binding) {
+    if (stopped) throw Error("文献工作台正在关闭。");
+    if (!binding) throw Error("文献会话绑定不存在。");
     if (opening.has(binding.session_id)) return opening.get(binding.session_id);
     bindings.set(binding.session_id, binding);
     const operation = (async () => {
@@ -653,19 +655,20 @@ export function createAgentCoordinator(
       if (h) h.touched = Date.now();
     }
   }
-  async function pump() {
-    if (
-      stopped ||
-      pumping ||
-      !service("agents") ||
-      !service("agentDefaultModel")
-    )
-      return;
-    pumping = true;
+  function pump() {
+    if (stopped || !service("agents") || !service("agentDefaultModel")) return;
+    if (!pumping) {
+      pumping = pumpPending().finally(() => {
+        pumping = null;
+      });
+    }
+    return pumping;
+  }
+  async function pumpPending() {
     try {
       const jobs = await call("pending");
       for (const job of jobs) {
-        if (active.size >= 2) break;
+        if (stopped || active.size >= 2) break;
         if (
           job.kind === "initial" &&
           [...active.values()].some((r) => r.job.kind === "initial")
@@ -682,11 +685,14 @@ export function createAgentCoordinator(
             sessionId: job.session_id,
           });
           await open(binding);
+          if (stopped) break;
           const prepared = await call("prepare", { id: job.id });
+          if (stopped) break;
           if (prepared.error) {
             await call("stop", {
               id: job.id,
               state: "failed",
+              expectedState: "queued",
               error: prepared.error,
             });
             continue;
@@ -697,14 +703,18 @@ export function createAgentCoordinator(
           const claimed = await call("claim", { id: job.id });
           void run(claimed);
         } catch (error) {
+          if (stopped) break;
+          if (["ITEM_ARCHIVED", "JOB_ACTIVE", "JOB_STATE_CHANGED"].includes(error.code)) continue;
           log(error);
           await call("stop", {
             id: job.id,
             state: "failed",
+            expectedState: "queued",
             error: String(error.message || error).slice(0, 1000),
           }).catch(() => {});
         }
       }
+      if (stopped) return;
       for (const [id, entry] of handles) {
         if (handles.size <= 8) break;
         if (
@@ -718,9 +728,7 @@ export function createAgentCoordinator(
         }
       }
     } catch (error) {
-      if (!String(error.message).includes("尚未就绪")) log(error);
-    } finally {
-      pumping = false;
+      if (!stopped && !String(error.message).includes("尚未就绪")) log(error);
     }
   }
   async function cancel(id) {
@@ -770,6 +778,7 @@ export function createAgentCoordinator(
     async stop() {
       stopped = true;
       clearInterval(timer);
+      await pumping;
       await Promise.allSettled(
         [...active.values()].map(async (r) => {
           await call("stop", {
@@ -781,6 +790,7 @@ export function createAgentCoordinator(
           r.agent?.cancel({ kind: "user" });
         }),
       );
+      await Promise.allSettled(opening.values());
       await Promise.allSettled(
         [...handles.values()].map((e) => e.handle.dispose()),
       );

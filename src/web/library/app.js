@@ -73,18 +73,18 @@ async function refresh() {
       page: { offset: state.offset, limit: state.limit },
     });
     if (token !== queryToken) return;
-    if (result.total > 0 && state.offset >= result.total) {
-      state.offset = 0;
+    if (state.offset > 0 && state.offset >= result.total) {
+      state.offset = Math.max(
+        0,
+        Math.floor((result.total - 1) / state.limit) * state.limit,
+      );
       return refresh();
     }
     state.query = result.query;
     state.rows = result.items;
     // Batch actions apply only to visible, explicitly selected rows.
-    state.checked = new Set(
-      [...state.checked].filter((id) =>
-        state.rows.some((item) => item.id === id),
-      ),
-    );
+    const visible = new Set(state.rows.map((item) => item.id));
+    state.checked = new Set([...state.checked].filter((id) => visible.has(id)));
     renderRows(result, state);
     renderCounts(result.counts);
     renderFilters(result, state);
@@ -127,7 +127,7 @@ function currentView() {
 function changed() {
   queryToken++;
   state.offset = 0;
-  state.checked.clear();
+  clearSelection();
   queueRefresh();
 }
 async function selectItem(id, { editing = false } = {}) {
@@ -153,6 +153,13 @@ async function reloadSearches() {
   state.searches = await api("/api/library/searches");
   renderSaved(state.searches, state.savedId);
   displayQueryName();
+}
+function clearSelection() {
+  state.checked.clear();
+  $("table-body")
+    .querySelectorAll("[data-check]:checked")
+    .forEach((input) => (input.checked = false));
+  renderSelection(state);
 }
 function selectedRows() {
   return state.rows.filter((item) => state.checked.has(item.id));
@@ -353,12 +360,12 @@ function bind() {
   });
   $("previous-page").addEventListener("click", () => {
     state.offset = Math.max(0, state.offset - state.limit);
-    state.checked.clear();
+    clearSelection();
     refresh();
   });
   $("next-page").addEventListener("click", () => {
     state.offset += state.limit;
-    state.checked.clear();
+    clearSelection();
     refresh();
   });
   $("table-body").addEventListener("click", (event) => {
@@ -383,10 +390,7 @@ function bind() {
       .forEach((x) => (x.checked = event.target.checked));
     renderSelection(state);
   });
-  $("clear-selection").addEventListener("click", () => {
-    state.checked.clear();
-    refresh();
-  });
+  $("clear-selection").addEventListener("click", clearSelection);
   $("batch-edit").addEventListener("click", async () => {
     try {
       const result = await batchEdit(selectedRows());

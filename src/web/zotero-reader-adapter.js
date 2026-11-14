@@ -266,6 +266,7 @@ export class ZoteroReaderAdapter {
       attachmentId: attachment.id,
       itemId: attachment.itemId,
       sourceHash: attachment.sourceHash,
+      readingPageIndex: this.currentPage(),
       pageIndex:
         text && Number.isInteger(selectedPage) && selectedPage >= 0
           ? selectedPage
