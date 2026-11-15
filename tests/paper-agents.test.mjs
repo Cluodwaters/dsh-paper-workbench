@@ -286,8 +286,8 @@ test("metadata and conversation summaries cannot cite pages that were not delive
   );
 });
 
-test("research tasks are separate, read only relevant pages, and reject stale summary replacement", async (t) => {
-  const { store, service, id } = setup(t);
+test("research sessions reuse paper history with job-scoped evidence and versioned summaries", async (t) => {
+  const { store, service, id, db } = setup(t);
   const initial = store.agents.claim(store.agents.pending()[0].id);
   await readAll(service, initial);
   await service.publish(initial.id, initial.lease_token, {
@@ -303,12 +303,20 @@ test("research tasks are separate, read only relevant pages, and reject stale su
   task = store.agents.claim(task.id);
   assert.notEqual(task.session_id, initial.session_id);
   assert.equal(task.baseline.ownerSession, "master");
-  store.agents.taskDigest(task.id, task.lease_token);
+  assert.match(task.briefing, /测试主题/);
+  assert.match(task.briefing, /实验比较/);
+  assert.match(task.briefing, /提出问题，再验证/);
+  assert.match(task.briefing, /示例结论/);
+  assert.doesNotMatch(task.briefing, /SECRET_BODY_ONLY/);
+  assert.equal(task.progress.expectedVersion, 1);
   await assert.rejects(
     () => service.publish(task.id, task.lease_token, { digest, sourceSeq: 30 }),
     (e) => e.code === "READ_INCOMPLETE",
   );
-  await service.readPages({ sessionId: task.session_id, pageIndices: [1] });
+  await service.readPages({
+    sessionId: task.session_id, pageIndices: [1], taskId: task.id,
+    leaseToken: task.lease_token,
+  });
   store.agents.conversationSummary({
     sessionId: initial.session_id,
     sourceSeq: 40,
@@ -332,6 +340,94 @@ test("research tasks are separate, read only relevant pages, and reject stale su
     undefined,
     "targeted research does not reread the whole paper",
   );
+  const resumedStore = new SqliteStore(db);
+  t.after(() => resumedStore.close());
+  const next = resumedStore.agents.enqueue(id, {
+    kind: "research", instruction: "再核对限制", ownerSession: "master",
+    requestKey: "task-two",
+  });
+  assert.notEqual(next.id, task.id);
+  assert.equal(next.session_id, task.session_id);
+  const claimed = store.agents.claim(next.id);
+  assert.match(claimed.briefing, /用户刚补充的结论/);
+  assert.match(claimed.briefing, /任务补充局限/);
+  assert.equal(claimed.progress.expectedVersion, 3);
+  await assert.rejects(
+    () => service.publish(next.id, claimed.lease_token, { digest, sourceSeq: 60 }),
+    { code: "READ_INCOMPLETE" },
+  );
+  await assert.rejects(
+    () => service.readPages({
+      sessionId: next.session_id, pageIndices: [1], taskId: next.id,
+      leaseToken: task.lease_token,
+    }),
+    { code: "JOB_STOPPED" },
+  );
+  await service.readPages({
+    sessionId: next.session_id, pageIndices: [1], taskId: next.id,
+    leaseToken: claimed.lease_token,
+  });
+  const updated = await service.publish(next.id, claimed.lease_token, {
+    digest: { ...saved.digest, openQuestions: "第二次任务补充问题", evidencePages: [0, 1] },
+    sourceSeq: 60,
+  });
+  assert.equal(updated.version, 4);
+  assert.equal(store.agents.digest(id).sessionId, task.session_id);
+  assert.equal(store.agents.digest(id).summary.openQuestions, "第二次任务补充问题");
+  assert.equal(store.agents.job(task.id).result.version, 3);
+  const previousResult = await service.handle("task-summary", { id: task.id });
+  assert.equal(previousResult.version, 3);
+  assert.equal(previousResult.summary.openQuestions, digest.openQuestions);
+});
+
+test("queued jobs on a busy paper leave scheduling slots for other papers", async (t) => {
+  const { store, service, id } = setup(t, { autoRead: false });
+  const other = store.addAttachment({
+    id: "second", originalName: "second.pdf", sha256: "b".repeat(64), pages: 1, bytes: 40,
+  }, "files/second.pdf");
+  const dispatch = (attachmentId, requestKey, instruction = "核对方法") =>
+    service.handle("enqueue", { attachmentId, requestKey, instruction, ownerSession: "master" });
+  const current = await dispatch(id, "first");
+  assert.match(store.agents.claim(current.id).briefing, /暂无可用的共享摘要/);
+  const queued = [];
+  for (let i = 0; i < 12; i++) queued.push(await dispatch(id, `same-${i}`));
+  const independent = await dispatch(other, "different");
+  assert.equal((await dispatch(id, "same-0")).id, queued[0].id);
+  await assert.rejects(dispatch(id, "same-0", "改用其他方法"), { code: "JOB_REQUEST_CONFLICT" });
+  assert.notEqual(independent.session_id, current.session_id);
+  assert.ok(queued.every((job) => job.session_id === current.session_id));
+  assert.throws(() => store.agents.claim(queued[0].id), { code: "JOB_ACTIVE" });
+  assert.deepEqual((await service.handle("pending")).map((j) => j.id), [independent.id]);
+  store.agents.stop(current.id, "cancelled", "test");
+  assert.deepEqual(
+    new Set((await service.handle("pending")).map((j) => j.id)),
+    new Set([queued[0].id, independent.id]),
+  );
+  assert.deepEqual(
+    (await service.handle("pending", { busyAttachments: [id] })).map((j) => j.id),
+    [independent.id],
+  );
+});
+
+test("a completed legacy delegation keeps its native conversation and job evidence", async (t) => {
+  const { store, service, id, hash } = setup(t, { autoRead: false });
+  const legacyId = randomUUID();
+  const legacy = store.agents.binding(`task:${legacyId}`, "task", id);
+  const timestamp = new Date().toISOString();
+  store.db.prepare(
+    `INSERT INTO paper_jobs(id,request_key,attachment_id,source_hash,session_id,
+       kind,state,instruction,baseline_json,created_at,updated_at)
+     VALUES(?,?,?,?,?,'research','completed','legacy prompt','{}',?,?)`,
+  ).run(legacyId, "legacy-req", id, hash, legacy.session_id, timestamp, timestamp);
+  store.agents.recordReads(legacy.session_id, [{ pageIndex: 0 }]);
+  const next = await service.handle("enqueue", {
+    attachmentId: id, instruction: "核对新任务", requestKey: "new-task",
+  });
+  assert.equal(next.session_id, legacy.session_id);
+  assert.equal(store.agents.job(legacyId).session_id, legacy.session_id);
+  const claimed = store.agents.claim(next.id);
+  assert.deepEqual(store.agents.taskReads(claimed), []);
+  assert.deepEqual(store.agents.reads(legacy.session_id).map((page) => page.pageIndex), [0]);
 });
 
 test("new topics are durable, retry-safe, isolated by role and preserve the initial conversation", (t) => {

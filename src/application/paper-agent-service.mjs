@@ -151,6 +151,26 @@ export class PaperAgentService {
       "PAGES",
       "每次读取 1 至 4 页。",
     );
+    const task = b.role === "paper" ? undefined : {
+      id: input.taskId,
+      token: input.leaseToken,
+    };
+    if (task) {
+      requireValue(
+        typeof task.id === "string" && task.id.length > 0 &&
+          typeof task.token === "string" && task.token.length > 0,
+        "JOB_STOPPED",
+        "当前没有可读取的论文任务。",
+        409,
+      );
+      const job = this.repository.active(task.id, task.token);
+      requireValue(
+        job.session_id === b.session_id,
+        "SESSION_SCOPE",
+        "读取凭据不属于当前论文任务。",
+        403,
+      );
+    }
     const result = await this.context.context({
       attachmentId: b.attachment_id,
       sourceHash: b.source_hash,
@@ -158,7 +178,7 @@ export class PaperAgentService {
       maxChars: 12000,
     });
     this.store.transaction(() =>
-      this.repository.recordReads(b.session_id, result.pages),
+      this.repository.recordReads(b.session_id, result.pages, task),
     );
     return result;
   }
@@ -170,6 +190,7 @@ export class PaperAgentService {
     );
     const idField = {
       job: "id",
+      "task-summary": "id",
       prepare: "id",
       claim: "id",
       heartbeat: "id",
@@ -214,9 +235,25 @@ export class PaperAgentService {
       case "attachment":
         return this.store.attachment(input.attachmentId);
       case "pending":
-        return r.pending();
+        return r.pending(input);
       case "job":
         return r.job(input.id);
+      case "task-summary": {
+        const job = r.job(input.id);
+        requireValue(
+          job.state === "completed" && job.result?.digest,
+          "SUMMARY_PENDING",
+          "此任务还没有保存摘要。",
+          409,
+        );
+        const attachment = this.store.attachment(job.attachment_id);
+        return {
+          attachmentId: attachment.id,
+          version: job.result.version,
+          summary: job.result.digest,
+          stale: job.source_hash !== attachment.sourceHash,
+        };
+      }
       case "prepare":
         return this.prepare(input.id);
       case "claim":
@@ -251,12 +288,14 @@ export class PaperAgentService {
       case "item":
         return catalogRecord(this.store.library.get(input.itemId));
       case "enqueue":
-        return r.enqueue(input.attachmentId, {
-          kind: "research",
-          instruction: input.instruction,
-          requestKey: input.requestKey,
-          ownerSession: input.ownerSession,
-        });
+        return this.store.transaction(() =>
+          r.enqueue(input.attachmentId, {
+            kind: "research",
+            instruction: input.instruction,
+            requestKey: input.requestKey,
+            ownerSession: input.ownerSession,
+          }),
+        );
       case "organize": {
         requireValue(
           input.command &&

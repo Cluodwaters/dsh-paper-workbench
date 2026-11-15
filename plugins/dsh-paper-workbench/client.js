@@ -1741,7 +1741,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
               h('span',null,job.kind==='initial'?'自动初读 · ':'委派阅读 · ',({queued:'排队 / 索引中',running:'读取中',completed:'摘要已保存',failed:'需要处理',cancelled:'已取消'})[job.state]||job.state,job.kind==='initial'?` · ${job.pageIndex}/${job.pageCount} 页`:''),
               job.error?h('span',{role:'status',style:{flexBasis:'100%'}},job.error):null,
               h('button',{className:'pw-button',onClick:()=>{setAiScope('paper');setAiOpen(true);void openView({view:'reader',attachmentId:job.attachmentId})}},'打开论文'),
-              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void taskAction('digest',{attachmentId:job.attachmentId}).then(setSummaryPreview).catch(e=>showNotice(e.message))},'查看摘要'):null,
+              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void taskAction('task-summary',{id:job.id}).then(setSummaryPreview).catch(e=>showNotice(e.message))},'查看摘要'):null,
               ['queued','running'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('cancel',{id:job.id}).catch(e=>showNotice(e.message))},'取消'):null,
               ['failed','cancelled'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('retry',{id:job.id}).catch(e=>showNotice(e.message))},'重试'):null,
             )):h('p',null,'暂无初读任务。导入新论文后会自动开始。'),

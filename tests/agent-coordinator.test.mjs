@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createAgentCoordinator } from "../plugins/dsh-paper-workbench/agents.js";
 
-function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
+function fixture({ role = "paper", kind = "initial", abort = false, wait = false, onIdle } = {}) {
   const binding = {
     session_id: "fixture-session",
     role,
@@ -13,11 +13,12 @@ function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
     id: "fixture-job",
     session_id: binding.session_id,
     attachment_id: "fixture-paper",
-    kind: "initial",
+    kind,
     state: "queued",
     lease_token: "lease",
     instruction: "请先通读全文",
     progress: {},
+    baseline: { ownerSession: binding.session_id },
   };
   const messages = [],
     actions = [],
@@ -41,7 +42,7 @@ function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
       if (action === "prepare") return { ready: true };
       if (action === "claim") {
         job.state = "running";
-        return { ...job };
+        return { ...job, briefing: kind === "research" ? "已知的主题、方法及主要发现" : undefined };
       }
       if (action === "job") return { ...job };
       if (action === "publish") {
@@ -144,6 +145,48 @@ function fixture({ role = "paper", abort = false, wait = false, onIdle } = {}) {
     },
   };
 }
+
+test("master task status serializes pending, failed and completed receipts", async (t) => {
+  const f = fixture({ role: "master" });
+  t.after(() => f.coordinator.stop());
+  await f.coordinator.ensure({ role: "master" });
+  const tool = f.definitions.find((tool) => tool.name === "paper_task_status");
+  const call = () => tool.execute({ taskId: f.job.id }, { signal: new AbortController().signal });
+  for (const state of ["queued", "running", "failed", "cancelled"]) {
+    f.job.state = state;
+    const reply = await call();
+    assert.deepEqual(reply, {
+      taskId: f.job.id, state, error: null, summary: null, version: null,
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(reply)), reply);
+  }
+  f.job.state = "completed";
+  f.job.result = { digest: { findings: "任务结论" }, version: 3 };
+  assert.deepEqual(await call(), {
+    taskId: f.job.id, state: "completed", error: null,
+    summary: f.job.result.digest, version: 3,
+  });
+});
+
+test("research continuation uses the first briefing once and recognizes targeted reading progress", async (t) => {
+  let turns = 0;
+  const f = fixture({
+    role: "task", kind: "research",
+    onIdle({ job }) {
+      if (++turns === 1) job.progress.reads = [{ pageIndex: 1, complete: 1 }];
+      else job.state = "completed";
+    },
+  });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.job.state === "completed");
+  assert.equal(f.messages.length, 2);
+  assert.match(f.messages[0].content[0].text, /已知的主题、方法及主要发现/);
+  assert.match(f.messages[1].content[0].text, /继续刚才的委派任务/);
+  assert.doesNotMatch(f.messages[1].content[0].text, /已知的主题/);
+  assert.ok(!f.definitions.some((tool) => tool.name === "paper_identify"));
+  assert.ok(f.definitions.some((tool) => tool.name === "paper_publish_digest"));
+});
 async function until(predicate) {
   for (let n = 0; n < 100; n++) {
     if (predicate()) return;

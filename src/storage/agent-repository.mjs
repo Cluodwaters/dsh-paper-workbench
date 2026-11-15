@@ -8,6 +8,7 @@ import {
 import { textTokens, fulltextPhrase } from "../domain/fulltext.mjs";
 import {
   INITIAL_READING,
+  researchBriefing,
   researchInstruction,
   validateDigest,
   catalogRecord,
@@ -163,7 +164,7 @@ export class AgentRepository {
       .run(seq, sessionId);
     return { ok: true };
   }
-  recordReads(sessionId, pages) {
+  recordReads(sessionId, pages, task) {
     const b = this.bySession(sessionId);
     requireValue(
       b?.attachment_id,
@@ -171,12 +172,36 @@ export class AgentRepository {
       "此会话不能读取正文。",
       403,
     );
+    const delivered = pages.filter(
+      (page) => page.text === undefined || page.text.length || page.source === "empty",
+    );
+    if (task) {
+      const job = this.active(task.id, task.token);
+      requireValue(
+        job.session_id === sessionId && job.attachment_id === b.attachment_id &&
+          job.source_hash === b.source_hash && job.kind !== "initial",
+        "SESSION_SCOPE",
+        "读取凭据不属于当前论文任务。",
+        403,
+      );
+      const recorded = this.taskReads(job);
+      const byPage = new Map(recorded.map((read) => [read.pageIndex, read.complete]));
+      for (const page of delivered) {
+        if (page.source !== "empty")
+          byPage.set(page.pageIndex, Math.max(byPage.get(page.pageIndex) || 0, page.truncated ? 0 : 1));
+      }
+      const reads = [...byPage].map(([pageIndex, complete]) => ({ pageIndex, complete }));
+      if (JSON.stringify(reads) !== JSON.stringify(recorded))
+        this.db
+          .prepare("UPDATE paper_jobs SET progress_json=?,updated_at=? WHERE id=?")
+          .run(JSON.stringify({ ...job.progress, reads }), now(), job.id);
+      return { ok: true };
+    }
     const insert = this.db.prepare(
       "INSERT INTO agent_page_reads VALUES(?,?,?,?) ON CONFLICT(session_id,source_hash,page_index) DO UPDATE SET complete=MAX(complete,excluded.complete)",
     );
-    for (const p of pages)
-      if (p.text === undefined || p.text.length || p.source === "empty")
-        insert.run(sessionId, b.source_hash, p.pageIndex, p.truncated ? 0 : 1);
+    for (const page of delivered)
+      insert.run(sessionId, b.source_hash, page.pageIndex, page.truncated ? 0 : 1);
     return { ok: true };
   }
   reads(sessionId) {
@@ -186,6 +211,13 @@ export class AgentRepository {
         "SELECT page_index AS pageIndex,complete FROM agent_page_reads WHERE session_id=? AND source_hash=?",
       )
       .all(sessionId, b.source_hash);
+  }
+  taskReads(job) {
+    if (job.progress.reads) return job.progress.reads;
+    // In earlier releases this binding belonged to just this job.
+    if (this.bySession(job.session_id)?.binding_key === `task:${job.id}`)
+      return this.reads(job.session_id);
+    return [];
   }
   taskDigest(id, token) {
     const j = this.active(id, token),
@@ -197,6 +229,26 @@ export class AgentRepository {
         id,
       );
     return d;
+  }
+  researchBinding(attachment) {
+    const scope = `research:${attachment.id}:${attachment.sourceHash}`;
+    const head = this.db
+      .prepare("SELECT session_id FROM agent_heads WHERE scope_key=?")
+      .get(scope);
+    if (head) return this.bySession(head.session_id);
+    const previous = this.db.prepare(
+      `SELECT agent_bindings.* FROM paper_jobs
+       JOIN agent_bindings USING (session_id)
+       WHERE paper_jobs.kind='research' AND paper_jobs.state='completed'
+         AND paper_jobs.attachment_id=? AND paper_jobs.source_hash=?
+         AND agent_bindings.binding_key='task:' || paper_jobs.id
+       ORDER BY paper_jobs.updated_at DESC,paper_jobs.rowid DESC LIMIT 1`,
+    ).get(attachment.id, attachment.sourceHash);
+    const binding = previous || this.binding(scope, "task", attachment.id);
+    this.db
+      .prepare("INSERT INTO agent_heads(scope_key,session_id) VALUES(?,?)")
+      .run(scope, binding.session_id);
+    return binding;
   }
   enqueue(
     attachmentId,
@@ -215,21 +267,35 @@ export class AgentRepository {
       "回收站中的论文不运行 AI。",
       409,
     );
-    const key = requestKey || `initial:${a.id}:${a.sourceHash}`;
+    const key = requestKey || (kind === "initial"
+      ? `initial:${a.id}:${a.sourceHash}`
+      : randomUUID());
     const existing = this.db
       .prepare("SELECT * FROM paper_jobs WHERE request_key=?")
       .get(key);
-    if (existing) return parseJob(existing);
-    const id = randomUUID(),
-      binding = this.binding(
-        kind === "initial" ? `paper:${a.id}` : `task:${id}`,
-        kind === "initial" ? "paper" : kind === "digest" ? "digest" : "task",
-        a.id,
+    if (existing) {
+      const job = parseJob(existing);
+      requireValue(
+        job.attachment_id === a.id && job.source_hash === a.sourceHash &&
+          job.kind === kind && job.baseline.ownerSession === ownerSession &&
+          (job.baseline.requestInstruction === undefined ||
+            job.baseline.requestInstruction === cleanText(instruction, 4000)),
+        "JOB_REQUEST_CONFLICT",
+        "任务请求已用于其他论文或指令。",
+        409,
       );
+      return job;
+    }
+    const id = randomUUID(),
+      binding = kind === "research"
+        ? this.researchBinding(a)
+        : this.binding(kind === "initial" ? `paper:${a.id}` : `task:${id}`,
+          kind === "initial" ? "paper" : "digest", a.id);
     const baseline = {
       revision: item.revision,
       metadata: item.metadata,
       ownerSession,
+      ...(kind === "research" ? { requestInstruction: cleanText(instruction, 4000) } : {}),
     };
     this.db
       .prepare(
@@ -268,7 +334,7 @@ export class AgentRepository {
       .all(Math.min(100, Math.max(1, limit)))
       .map(parseJob);
   }
-  pending() {
+  pending({ busyAttachments = [], allowInitial = true } = {}) {
     this.db
       .prepare(
         "UPDATE paper_jobs SET state='queued',lease_token=NULL,lease_until=NULL,error='上次运行中断，等待继续',updated_at=? WHERE state='running' AND lease_until<?",
@@ -281,9 +347,21 @@ export class AgentRepository {
       .run(now());
     return this.db
       .prepare(
-        "SELECT * FROM paper_jobs WHERE state='queued' ORDER BY CASE kind WHEN 'research' THEN 0 ELSE 1 END,created_at LIMIT 10",
+        `SELECT * FROM (
+          SELECT job.*, row_number() OVER (
+            PARTITION BY attachment_id ORDER BY CASE kind WHEN 'research' THEN 0 ELSE 1 END,created_at,rowid
+          ) AS position_in_paper
+          FROM paper_jobs AS job
+          WHERE state='queued' AND (? OR kind!='initial')
+            AND attachment_id NOT IN (SELECT value FROM json_each(?))
+            AND NOT EXISTS (
+              SELECT 1 FROM paper_jobs AS active
+              WHERE active.attachment_id=job.attachment_id AND active.state='running'
+            )
+        ) WHERE position_in_paper=1
+        ORDER BY CASE kind WHEN 'research' THEN 0 ELSE 1 END,created_at,id LIMIT 10`,
       )
-      .all()
+      .all(Number(allowInitial), JSON.stringify(busyAttachments))
       .map(parseJob);
   }
   claim(id) {
@@ -295,9 +373,10 @@ export class AgentRepository {
         "任务不在队列中。",
         409,
       );
-      const a = this.store.attachment(job.attachment_id);
+      const a = this.store.attachment(job.attachment_id),
+        item = this.store.library.get(a.itemId);
       requireValue(
-        !this.store.library.get(a.itemId).archivedAt,
+        !item.archivedAt,
         "ITEM_ARCHIVED",
         "回收站中的论文不运行 AI。",
         409,
@@ -308,13 +387,26 @@ export class AgentRepository {
         "论文版本已变化。",
         409,
       );
+      requireValue(
+        !this.db.prepare(
+          "SELECT 1 FROM paper_jobs WHERE attachment_id=? AND state='running' AND lease_until>?",
+        ).get(a.id, Date.now()),
+        "JOB_ACTIVE",
+        "此论文已有任务正在运行。",
+        409,
+      );
+      const digest = job.kind === "research" ? this.digest(a.id) : null;
+      const progress = digest
+        ? { ...job.progress, expectedVersion: digest.version || 0 }
+        : job.progress;
       const token = randomUUID();
       this.db
         .prepare(
-          "UPDATE paper_jobs SET state='running',lease_token=?,lease_until=?,attempts=attempts+1,error=NULL,updated_at=? WHERE id=?",
+          "UPDATE paper_jobs SET state='running',lease_token=?,lease_until=?,attempts=attempts+1,error=NULL,updated_at=?,progress_json=? WHERE id=?",
         )
-        .run(token, Date.now() + 90000, now(), id);
-      return this.job(id);
+        .run(token, Date.now() + 90000, now(), JSON.stringify(progress), id);
+      const claimed = this.job(id);
+      return digest ? { ...claimed, briefing: researchBriefing(item, a, digest) } : claimed;
     });
   }
   active(id, token) {
@@ -413,9 +505,9 @@ export class AgentRepository {
         )
         .run(JSON.stringify(next), now(), id);
       this.recordReads(job.session_id, [
-        { pageIndex: chunk.pageIndex, truncated: !chunk.pageComplete },
-      ]);
-      return next;
+        { pageIndex: chunk.pageIndex, truncated: !chunk.pageComplete, source: chunk.source },
+      ], job.kind === "initial" ? undefined : { id, token });
+      return job.kind === "initial" ? next : this.job(id).progress;
     });
   }
   identify(id, token, input) {
@@ -504,6 +596,7 @@ export class AgentRepository {
       const job = this.active(id, token),
         a = this.store.attachment(job.attachment_id);
       const previousDigest = this.digest(a.id);
+      const reads = job.kind === "initial" ? this.reads(job.session_id) : this.taskReads(job);
       requireValue(
         (previousDigest.version || 0) === (job.progress.expectedVersion || 0),
         "SUMMARY_CONFLICT",
@@ -519,7 +612,7 @@ export class AgentRepository {
         );
       else
         requireValue(
-          this.reads(job.session_id).length > 0,
+          reads.length > 0,
           "READ_INCOMPLETE",
           "委派任务至少需要按需读取相关原文。",
           409,
@@ -531,7 +624,7 @@ export class AgentRepository {
         409,
       );
       const validated = validateDigest(value, a.pages),
-        coverage = this.coverage(a, job.session_id, previousDigest);
+        coverage = this.coverage(a, job.session_id, previousDigest, reads);
       requireValue(
         validated.evidencePages.every((p) => coverage.evidence.has(p)),
         "DIGEST_EVIDENCE",
@@ -613,9 +706,8 @@ export class AgentRepository {
         }
       : { attachmentId, summary: null, status: "unread" };
   }
-  coverage(a, sessionId, previous) {
-    const old = !previous?.stale ? previous?.summary?.coverage : null,
-      reads = this.reads(sessionId);
+  coverage(a, sessionId, previous, reads = this.reads(sessionId)) {
+    const old = !previous?.stale ? previous?.summary?.coverage : null;
     const known =
       old?.readPages === a.pages
         ? Array.from({ length: a.pages }, (_, i) => i)
