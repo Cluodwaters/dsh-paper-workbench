@@ -47,7 +47,7 @@ try {
   }
   async function drawDot(reader, offset = 70) {
     const frame = reader.frameLocator("#reader-frame");
-    const drawButton = frame.getByRole("button", { name: "Draw", exact: true });
+    const drawButton = frame.getByRole("button", { name: "绘图", exact: true });
     if (!(await drawButton.getAttribute("class")).split(" ").includes("active"))
       await drawButton.click();
     const pdfFrame = frame.frameLocator("iframe");

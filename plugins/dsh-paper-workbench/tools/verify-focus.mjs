@@ -131,7 +131,7 @@ try {
   await page.getByRole('button', {name:'收起 AI',exact:true}).click()
   frame = page.frames().find(f => /reader.html\?/.test(f.url()))
   const reader = frame.frameLocator('#reader-frame')
-  await reader.getByRole('button', {name:'Draw',exact:true}).click()
+  await reader.getByRole('button', {name:'绘图',exact:true}).click()
   const pdfFrame = await reader.locator('iframe').boundingBox()
   const paperPage = await reader.frameLocator('iframe').locator('.page[data-page-number="2"]').boundingBox()
   const failSave = route => route.fulfill({status:503,json:{error:{code:'QA_SAVE_FAILED',message:'Synthetic save failure'}}})

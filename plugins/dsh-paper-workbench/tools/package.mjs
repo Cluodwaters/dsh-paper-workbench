@@ -118,7 +118,7 @@ for (const directory of ['third_party', 'resources', 'node_modules']) {
   })
 }
 for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'phase3-assets.lock.json', 'sources.lock.json', 'ARCHITECTURE.md', 'README.md']) {
-  const source = path.join(stagedBackend, file)
+  const source = path.join(file === 'THIRD_PARTY_NOTICES.md' ? repoRoot : stagedBackend, file)
   if (existsSync(source)) cpSync(source, path.join(backendRoot, file))
 }
 
@@ -152,6 +152,12 @@ const bridgeFiles = [
   'src/web/app.js',
   'src/web/reader-shell.css',
   'src/web/reader-toolbar.js',
+  'src/web/zotero-reader-adapter.js',
+  'src/web/reader-locales/brand.ftl',
+  'src/web/reader-locales/en-US/reader.ftl',
+  'src/web/reader-locales/zh-CN/zotero.ftl',
+  'src/web/reader-locales/zh-CN/reader.ftl',
+  'src/web/reader-locales/zh-CN/workbench.ftl',
 ]
 const provenance = {
   schemaVersion: 1,

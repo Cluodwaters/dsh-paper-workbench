@@ -3,6 +3,7 @@
 This personal validation project follows the GNU Affero General Public License v3 route. The complete text is in `LICENSE`. This is not an official Zotero distribution and uses its own application name.
 
 - **Zotero Reader** and **Zotero Document Worker**: Corporation for Digital Scholarship; AGPLv3. Their `COPYING` files remain in the corresponding `third_party` directories.
+- The Reader's Fluent resources under `src/web/reader-locales/` come from the [Zotero locale source](https://github.com/zotero/zotero/tree/a6a919234a360f5cc0f8dbf45b84e1fafc546f41/chrome/locale) pinned in `sources.lock.json`. The Reader's bundled brand terms and fallback English reader strings use that same locale snapshot. Workbench-specific wording is in `zh-CN/workbench.ftl`.
 - **PDF.js** and its Zotero forks: Mozilla / contributors; Apache License 2.0. License files remain in the source and staged viewer assets.
 - **PDFAssembler**: MIT copyright notice is retained in the upstream source file.
 - React, EPUB.js, Fluent, font assets and other transitive build/runtime components retain their original upstream licenses. The exact dependency trees are recorded by the upstream lock files; `sources.lock.json` identifies the source commits.

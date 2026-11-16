@@ -1,6 +1,31 @@
 import { api, PersistenceClient } from "./persistence-client.js";
 import { appUrl } from "./url.js";
 
+const readerLocaleFiles = [
+  "brand.ftl",
+  "en-US/reader.ftl",
+  "zh-CN/zotero.ftl",
+  "zh-CN/reader.ftl",
+  "zh-CN/workbench.ftl",
+];
+
+async function loadReaderLocale() {
+  try {
+    return await Promise.all(
+      readerLocaleFiles.map(async (file) => {
+        const response = await fetch(appUrl(`/reader-locales/${file}`), {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!response.ok) throw new Error(`无法加载阅读器词条 ${file}`);
+        return response.text();
+      }),
+    );
+  } catch {
+    // createReader supplies its built-in locale when no resources are passed.
+    return undefined;
+  }
+}
+
 /** All upstream private API access is contained here and pinned to 293d7e1.
  * It must be revalidated when upgrading Zotero Reader. */
 export class ZoteroReaderAdapter {
@@ -21,12 +46,13 @@ export class ZoteroReaderAdapter {
       ...embedded,
       ...this.persistence.overlay(document.snapshot.annotations),
     ];
-    const bytes = await fetch(
-      appUrl(`/api/pdf/${document.attachment.id}`),
-    ).then((response) => {
-      if (!response.ok) throw new Error("无法读取测试副本");
-      return response.arrayBuffer();
-    });
+    const [bytes, ftl] = await Promise.all([
+      fetch(appUrl(`/api/pdf/${document.attachment.id}`)).then((response) => {
+        if (!response.ok) throw new Error("无法读取测试副本");
+        return response.arrayBuffer();
+      }),
+      loadReaderLocale(),
+    ]);
     await new Promise((resolve, reject) => {
       this.frame.onload = resolve;
       this.frame.onerror = () => reject(new Error("阅读组件加载失败"));
@@ -35,9 +61,11 @@ export class ZoteroReaderAdapter {
     const host = this.frame.contentWindow;
     if (typeof host.createReader !== "function")
       throw new Error("阅读器构建不完整，请检查构建产物。");
+    if (ftl) host.document.documentElement.lang = "zh-CN";
     let deletions = [];
     this.reader = host.createReader({
       type: "pdf",
+      ftl,
       data: { buf: new host.Uint8Array(bytes) },
       title: document.attachment.originalName,
       readOnly: false,

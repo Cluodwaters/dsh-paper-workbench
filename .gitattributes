@@ -4,6 +4,11 @@
 *.cjs text eol=lf
 *.json text eol=lf
 *.md text eol=lf
+*.ftl text eol=lf
+# Keep the upstream Fluent files byte-for-byte, including their indented blank lines.
+src/web/reader-locales/en-US/reader.ftl whitespace=-blank-at-eol
+src/web/reader-locales/zh-CN/reader.ftl whitespace=-blank-at-eol
+src/web/reader-locales/zh-CN/zotero.ftl whitespace=-blank-at-eol
 *.yml text eol=lf
 *.py text eol=lf
 *.cmd text eol=crlf

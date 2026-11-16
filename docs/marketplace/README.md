@@ -1,6 +1,6 @@
 # 文献工作台市场收录与更新
 
-文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.10。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
+文献工作台已收录到 awesome-dsh-plugin 的「文档与渲染」分类。插件从 v0.2.5 起使用 GitHub Release 更新通道，当前版本为 v0.2.11。 [公开商店条目](https://awesome-dsh-plugin.com/p/Cluodwaters/dsh-paper-workbench--plugins-dsh-paper-workbench/)
 
 ## 提交内容
 

@@ -402,7 +402,27 @@ try {
   await page.evaluate(() => command("theme", { theme: "light" }));
   pass("host theme commands work and messages from another source are ignored");
   const upstream = frame.frameLocator("#reader-frame");
-  await upstream.getByRole("button", { name: "Draw", exact: true }).click();
+  await upstream.getByTitle("外观", { exact: true }).click();
+  const appearance = upstream.locator(".appearance-popup");
+  await appearance.getByText("滚动方式", { exact: true }).waitFor();
+  assert.equal(
+    await appearance.getByTitle("多页并排", { exact: true }).isVisible(),
+    true,
+  );
+  assert.equal(
+    await appearance.getByText("跨页显示", { exact: true }).isVisible(),
+    true,
+  );
+  assert.equal(
+    await appearance.getByText("拆分视图", { exact: true }).isVisible(),
+    true,
+  );
+  await upstream
+    .locator(".toolbar-popup-overlay")
+    .click({ position: { x: 4, y: 100 } });
+  await appearance.waitFor({ state: "hidden" });
+  pass("the embedded PDF reader displays Simplified Chinese controls");
+  await upstream.getByRole("button", { name: "绘图", exact: true }).click();
   const pageBox = await upstream
     .frameLocator("iframe")
     .locator('.page[data-page-number="1"]')
