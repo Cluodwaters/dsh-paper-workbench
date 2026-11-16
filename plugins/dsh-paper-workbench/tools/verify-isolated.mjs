@@ -472,8 +472,8 @@ async function main() {
         `(() => {
           const frame = document.querySelector('.pw-frame')
           const win = frame.contentWindow
-          const tools = frame.contentDocument.querySelector('#reader-tools-toggle')
-          const panel = frame.contentDocument.querySelector('#reader-tools')
+          const tools = document.querySelector('.pw-header #reader-tools-toggle')
+          const panel = document.querySelector('.pw-header #reader-tools')
           return Boolean(tools && panel && !panel.matches(':popover-open') && win.workbench && win.workbench.adapter && win.workbench.adapter.pdfApplication)
         })()`,
         { timeoutMs: 120000 },
@@ -489,7 +489,7 @@ async function main() {
     await step('"Ask about this paper" opens the native AI panel with context but submits nothing', async () => {
       await evaluate(
         session,
-        `(() => { const doc = document.querySelector('.pw-frame').contentDocument; doc.querySelector('#reader-tools-toggle').click(); if (!doc.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); doc.querySelector('[data-ai-action="ask"]').click(); return true })()`,
+        `(() => { const header = document.querySelector('.pw-header'); header.querySelector('#reader-tools-toggle').click(); if (!header.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); header.querySelector('[data-ai-action="ask"]').click(); return true })()`,
       )
       await waitFor(session, `(() => { const panel = document.querySelector('.pw-panel'); return Boolean(panel && panel.getAttribute('data-collapsed') === 'false') })()`, {
         timeoutMs: 15000,
@@ -617,7 +617,7 @@ async function main() {
       const before = sessionId ? await readPaperContextSnapshot(sessionId) : null
       await evaluate(
         session,
-        `(() => { const doc = document.querySelector('.pw-frame').contentDocument; doc.querySelector('#reader-tools-toggle').click(); if (!doc.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); doc.querySelector('[data-ai-action="translate"]').click(); return true })()`,
+        `(() => { const header = document.querySelector('.pw-header'); header.querySelector('#reader-tools-toggle').click(); if (!header.querySelector('#reader-tools').matches(':popover-open')) throw Error('Reader tools did not open'); header.querySelector('[data-ai-action="translate"]').click(); return true })()`,
       )
       await waitFor(
         session,

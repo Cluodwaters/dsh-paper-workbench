@@ -3,8 +3,8 @@ import { ZoteroReaderAdapter } from "./zotero-reader-adapter.js";
 import { appUrl } from "./url.js";
 import { connectHarness, requestAi, embedded } from "./harness-bridge.js";
 import { compactReaderToolbar } from "./reader-toolbar.js";
-const $ = (id) => document.getElementById(id);
-if (embedded) compactReaderToolbar();
+const readerToolbar = embedded ? compactReaderToolbar() : null;
+const $ = (id) => document.getElementById(id) || readerToolbar?.getControl(id);
 let documents = [],
   adapter = null,
   opening = false;
@@ -160,6 +160,7 @@ $("export-pdf").addEventListener("click", async () => {
   }
 });
 window.paperWorkbenchReader = Object.freeze({
+  mountHeader: readerToolbar?.mountHeader,
   async prepareClose(action) {
     try {
       if (!adapter) return { ok: true };

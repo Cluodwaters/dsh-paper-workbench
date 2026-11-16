@@ -2,6 +2,7 @@
 // Move the existing controls so their persistence and reader handlers stay intact.
 export function compactReaderToolbar() {
   const toolbar = document.querySelector(".toolbar");
+  const title = toolbar.querySelector("#document-title");
   const actions = toolbar.querySelector(".actions");
   const ai = document.querySelector(".harness-ai-tools");
   const status = document.getElementById("save-status");
@@ -10,6 +11,8 @@ export function compactReaderToolbar() {
   trigger.id = "reader-tools-toggle";
   trigger.type = "button";
   trigger.textContent = "阅读工具";
+  trigger.setAttribute("aria-label", "阅读工具");
+  trigger.title = "阅读工具";
   trigger.setAttribute("aria-expanded", "false");
   trigger.setAttribute("aria-controls", "reader-tools");
   trigger.setAttribute("popovertarget", "reader-tools");
@@ -27,9 +30,16 @@ export function compactReaderToolbar() {
   toolbar.append(status, retry, trigger);
   document.body.append(panel);
   document.body.classList.add("compact-reader");
+  const controls = new Map(
+    [title, status, retry, ...actions.querySelectorAll("[id]")].map((element) => [element.id, element]),
+  );
+  function closePanel() {
+    if (panel.matches(":popover-open")) panel.hidePopover();
+  }
 
   const position = () => {
     const rect = trigger.getBoundingClientRect();
+    const { innerWidth, innerHeight } = trigger.ownerDocument.defaultView;
     panel.style.top = `${rect.bottom + 6}px`;
     panel.style.right = `${Math.max(8, innerWidth - rect.right)}px`;
     panel.style.maxHeight = `${Math.max(0, innerHeight - rect.bottom - 14)}px`;
@@ -56,15 +66,55 @@ export function compactReaderToolbar() {
       trigger.focus({ preventScroll: true });
     }
   });
-  window.addEventListener("resize", () => {
+  const resize = () => {
     if (panel.matches(":popover-open")) position();
-  });
+  };
   // Pointer events in the PDF's child frame do not bubble to this document.
-  window.addEventListener("blur", () => {
+  const blur = () => {
     if (
       panel.matches(":popover-open") &&
-      document.activeElement?.tagName === "IFRAME"
+      trigger.ownerDocument.activeElement?.tagName === "IFRAME"
     )
       panel.hidePopover();
-  });
+  };
+  function watchViewport(viewport) {
+    viewport.addEventListener("resize", resize);
+    viewport.addEventListener("blur", blur);
+    return () => {
+      viewport.removeEventListener("resize", resize);
+      viewport.removeEventListener("blur", blur);
+    };
+  }
+  let unwatch = watchViewport(window);
+
+  return {
+    getControl: (id) => controls.get(id),
+    mountHeader(titleSlot, actionSlot) {
+      // Both slots belong to our same-origin host. Keeping the original nodes
+      // also keeps the existing reader, annotation and export handlers.
+      const host = titleSlot.ownerDocument;
+      if (host !== window.parent.document || actionSlot.ownerDocument !== host)
+        throw new Error("阅读器顶栏位置无效。");
+      closePanel();
+      unwatch();
+      titleSlot.append(title);
+      actionSlot.append(status, retry, trigger, panel);
+      toolbar.hidden = true;
+      unwatch = watchViewport(host.defaultView);
+
+      const release = () => {
+        window.removeEventListener("pagehide", release);
+        if (title.ownerDocument !== host) return;
+        closePanel();
+        unwatch();
+        toolbar.prepend(title);
+        toolbar.append(status, retry, trigger);
+        document.body.append(panel);
+        toolbar.hidden = false;
+        unwatch = watchViewport(window);
+      };
+      window.addEventListener("pagehide", release, { once: true });
+      return release;
+    },
+  };
 }

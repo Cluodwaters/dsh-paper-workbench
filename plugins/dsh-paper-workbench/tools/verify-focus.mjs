@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url)
 const { chromium } = require(process.env.PAPER_WORKBENCH_PLAYWRIGHT || 'playwright')
 const instance = JSON.parse(readFileSync(process.argv[2], 'utf8'))
 const fixture = readFileSync(process.argv[3])
+const fixtureTitle = 'Space manufacturing oriented prediction and control of solidification shrinkage in ultrahigh temperature alloys'
 const output = path.resolve(process.argv[4] || 'output/focus-shell/verification')
 mkdirSync(output, { recursive: true })
 const report = { checks: [], errors: [], captionSimulation: true }
@@ -32,6 +33,7 @@ const openWorkbench = async () => {
     const sidebar = document.querySelector('[data-pw-host-sidebar]')
     return sidebar && getComputedStyle(sidebar).display === 'none'
   })
+  await page.waitForFunction(() => document.querySelector('.pw-frame')?.contentDocument?.documentElement?.dataset.harness === 'true', null, {timeout:60000})
 }
 try {
   await page.goto(instance.url)
@@ -68,7 +70,7 @@ try {
     for (const width of [1440, 1000, 760, 640, 520]) {
       await page.setViewportSize({width,height:900})
       const box = await page.locator('.pw-header').boundingBox()
-      const last = await page.locator('.pw-header > button').last().boundingBox()
+      const last = await page.locator('.pw-header-actions').boundingBox()
       assert.equal(box.y, 0)
       assert.equal(box.height, 40)
       assert.ok(last.x + last.width <= width - 138, `caption controls overlap at ${width}`)
@@ -102,20 +104,71 @@ try {
   }, initialSidebarWidth)
   pass('Unsaved forms block return; a successful return restores the original conversation, draft and Host controls')
 
-  await page.evaluate(async base64 => {
+  await page.evaluate(async ({ base64, title }) => {
     const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0))
     const r = await fetch('/paper-workbench/api/library/import-pdf', {method:'POST',headers:{'content-type':'application/pdf','x-file-name':'focus-fixture.pdf'},body:bytes})
     if (!r.ok) throw Error('Fixture import failed: '+r.status)
-    return r.json()
-  }, fixture.toString('base64'))
+    const { item } = await r.json()
+    const update = await fetch(`/paper-workbench/api/library/items/${item.id}`, {
+      method:'POST', headers:{'content-type':'application/json'},
+      body:JSON.stringify({requestId:crypto.randomUUID(),expectedRevision:item.revision,metadata:{...item.metadata,title}}),
+    })
+    if (!update.ok) throw Error('Fixture title update failed: '+update.status)
+  }, { base64:fixture.toString('base64'), title:fixtureTitle })
   await openWorkbench()
   frame = page.frames().find(f => /paper-workbench\/\?/.test(f.url()))
   await frame.locator('.read-link').first().click()
-  await page.waitForFunction(() => document.querySelector('.pw-frame')?.contentDocument?.querySelector('#reader-tools-toggle'))
+  const title = page.locator('.pw-header #document-title')
+  const tools = page.locator('.pw-header #reader-tools-toggle')
+  await title.waitFor()
+  assert.equal(await title.textContent(), fixtureTitle)
+  assert.equal(await title.getAttribute('title'), fixtureTitle)
   frame = page.frames().find(f => /reader.html\?/.test(f.url()))
   await frame.waitForFunction(() => window.workbench?.adapter?.pdfApplication && window.workbench.adapter.getSaveState() === 'saved')
-  await page.getByRole('button', {name:'AI 辅助',exact:true}).click()
+  assert.equal(await frame.locator('.toolbar').isVisible(), false)
+  const layout = () => page.evaluate(() => {
+    const bounds = selector => document.querySelector(selector).getBoundingClientRect()
+    const header = bounds('.pw-header')
+    const title = bounds('.pw-reader-title')
+    const nav = bounds('.pw-header-nav')
+    const actions = bounds('.pw-header-actions')
+    const text = document.querySelector('.pw-header #document-title')
+    return { centerError:Math.abs((header.left + header.right - title.left - title.right) / 2), titleWidth:title.width,
+      navGap:title.left - nav.right, actionsGap:actions.left - title.right, actionsRight:actions.right,
+      clipped:text.scrollWidth > text.clientWidth }
+  })
+  for (const width of [1920, 1440, 1000, 760, 640, 520]) {
+    await page.setViewportSize({width,height:900})
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    const {centerError,titleWidth,navGap,actionsGap,actionsRight,clipped} = await layout()
+    assert.ok(centerError < 1, `${width}: title is off center`)
+    assert.ok(titleWidth > 0 && navGap >= 7 && actionsGap >= 7, `${width}: title width ${titleWidth}, gaps ${navGap}/${actionsGap}`)
+    assert.ok(actionsRight <= width - 138, `${width}: a control overlaps the Windows caption buttons`)
+    if (width === 520) assert.ok(clipped, 'long titles must truncate at narrow widths')
+    if (width === 1920 || width === 520) await page.locator('.pw-header').screenshot({path:path.join(output,`reader-title-${width}.png`)})
+  }
+  await page.setViewportSize({width:1440,height:1000})
+  const readingArea = await frame.locator('.reading-area').boundingBox()
+  await tools.click()
+  assert.ok(await page.locator('#reader-tools').isVisible())
+  assert.deepEqual(await frame.locator('.reading-area').boundingBox(), readingArea)
+  await page.locator('#page-text-button').focus()
+  await page.keyboard.press('Escape')
+  assert.equal(await page.locator('#reader-tools').isVisible(), false)
+  assert.equal(await tools.evaluate(element => element === document.activeElement), true)
+  pass('Title is centered across desktop caption widths; lifted reader tools preserve the PDF viewport')
+  const text = frame.frameLocator('#reader-frame').frameLocator('iframe').locator('.page[data-page-number="1"] .textLayer span').first()
+  const selected = await text.evaluate(element => {
+    const selection = element.ownerDocument.defaultView.getSelection()
+    selection.selectAllChildren(element)
+    return selection.toString()
+  })
+  assert.ok(selected.trim())
+  await tools.click()
+  assert.equal(await text.evaluate(element => element.ownerDocument.defaultView.getSelection().toString()), selected)
+  await page.getByRole('button', {name:'就此提问',exact:true}).click()
   await page.locator('.pw-conversation-host [contenteditable=true]').waitFor({timeout:60000})
+  pass('The lifted tools keep PDF text selected and open the bound AI panel')
   await frame.evaluate(() => window.workbench.adapter.goToPage(1))
   await frame.waitForFunction(() => window.workbench.adapter.currentPage() === 1)
   await page.locator('.pw-return').click()
@@ -141,10 +194,10 @@ try {
   await page.locator('.pw-return').click()
   await page.locator('.pw-root > .pw-notice').waitFor()
   assert.equal(await page.locator('.pw-root').count(), 1)
-  assert.equal(await frame.locator('#retry').isVisible(), true)
+  assert.equal(await page.locator('.pw-header #retry').isVisible(), true)
   assert.equal(await page.locator('[data-windows-menu]').isVisible(), false)
   await page.unroute('**/api/annotations/**', failSave)
-  await frame.locator('#retry').click()
+  await page.locator('.pw-header #retry').click()
   await frame.waitForFunction(() => window.workbench.adapter.getSaveState() === 'saved')
   await page.locator('.pw-return').click()
   await page.waitForFunction(() => !document.querySelector('.pw-root'))

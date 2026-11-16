@@ -386,7 +386,21 @@ window.__ModuleLoader__.load({
     function createStyles() {
       return `
 .pw-root { display:flex; flex-direction:column; height:100%; min-height:0; min-width:0; background:var(--dsw-alias-bg-base); color:var(--dsw-alias-label-primary); font-family:var(--dsh-font-family-text,var(--dsw-font-family,system-ui)); font-size:max(15px,var(--dsh-content-font-size,14px)); line-height:1.55; }
-.pw-header { display:flex; align-items:center; gap:10px; height:46px; padding:0 12px; border-bottom:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-1); flex:0 0 auto; }
+.pw-header { position:relative; display:flex; justify-content:space-between; align-items:center; gap:10px; height:46px; padding:0 12px; border-bottom:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-1); flex:0 0 auto; }
+.pw-header-nav, .pw-header-actions, .pw-reader-actions { display:flex; align-items:center; gap:inherit; flex:none; }
+.pw-reader-title:empty, .pw-reader-actions:empty, .pw-reader-actions > [hidden] { display:none; }
+.pw-reader-title { position:absolute; left:50%; transform:translateX(-50%); width:max-content; max-width:var(--pw-reader-title-width,0px); white-space:nowrap; text-align:center; overflow:hidden; -webkit-app-region:no-drag; }
+.pw-reader-title #document-title { max-width:100%; overflow:hidden; text-overflow:ellipsis; font-size:min(16px,max(13px,var(--dsh-content-font-size,14px))); font-weight:600; }
+.pw-reader-actions {
+  --h-ink:var(--dsw-alias-label-primary); --h-muted:var(--dsw-alias-label-secondary); --h-surface:var(--dsw-alias-bg-layer-1);
+  --h-border:var(--dsw-alias-border-l1); --h-soft:var(--dsw-alias-bg-layer-2); --h-selected:var(--dsw-alias-bg-layer-2);
+  --h-accent:var(--dsw-alias-brand-primary); --h-font-control:14px; --h-font-caption:12px;
+}
+.pw-reader-actions > #reader-tools { -webkit-app-region:no-drag; }
+.pw-reader-actions > #save-status { width:7em; color:var(--h-muted); font-size:12px; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; -webkit-app-region:no-drag; }
+.pw-reader-actions > #save-status:is([data-state="failed"],[data-state="conflict"]) { color:var(--dsw-alias-state-error-primary); }
+.pw-reader-actions > button:not([hidden]) { min-height:28px; padding:3px 7px; border:1px solid var(--h-border); border-radius:6px; background:var(--dsw-alias-bg-base); color:var(--h-ink); font:inherit; font-size:13px; white-space:nowrap; cursor:pointer; }
+.pw-reader-actions > button:hover { background:var(--h-soft); }
 .pw-brand { display:flex; align-items:center; gap:8px; font-weight:600; font-size:15px; letter-spacing:.1px; white-space:nowrap; }
 .pw-brand svg { color:var(--dsw-alias-brand-primary); }
 .pw-tabs { display:flex; align-items:center; gap:2px; margin-left:6px; }
@@ -394,7 +408,6 @@ window.__ModuleLoader__.load({
 .pw-tab:hover { background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-primary); }
 .pw-tab[data-active="true"] { background:var(--dsw-alias-bg-layer-2); color:var(--dsw-alias-label-primary); font-weight:600; }
 .pw-tab:disabled { opacity:.45; cursor:default; }
-.pw-spacer { flex:1; min-width:8px; }
 .pw-status { display:inline-flex; align-items:center; gap:6px; max-width:260px; padding:4px 9px; border-radius:999px; border:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-base); color:var(--dsw-alias-label-secondary); font-size:14px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pw-status[data-phase="ready"] .pw-dot { background:var(--dsw-alias-state-success-primary); }
 .pw-status[data-phase="starting"] .pw-dot { background:var(--dsw-alias-state-warn-primary); }
@@ -475,7 +488,7 @@ html[data-pw-focus] [data-pw-host-sidebar], html[data-pw-focus] [data-shell-lead
 html[data-pw-focus] [data-pw-main] { padding-top:0 !important; }
 html[data-pw-focus] [data-pw-center] { border-radius:0 !important; }
 .pw-header .pw-return { width:28px; height:28px; padding:0; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.pw-header > *, .pw-tabs { flex-shrink:0; }
+.pw-tabs { flex-shrink:0; }
 .pw-jobs-short { display:none; }
 .pw-root > .pw-notice { flex-shrink:0; margin:6px 10px; }
 html[data-pw-focus][data-windows-titlebar] .pw-header { position:fixed; top:0; left:0; right:var(--pw-caption-right,138px); z-index:16; height:var(--dsh-windows-titlebar-height,40px); gap:8px; padding:0 10px; border-bottom:0; background:var(--dsw-specific-sidebar-fill); -webkit-app-region:drag; }
@@ -486,12 +499,17 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
   .pw-status-label { display:none; }
   .pw-header .pw-tabs { margin-left:0; }
   .pw-header .pw-tab { padding-inline:7px; }
+  .pw-reader-actions > #save-status { width:7px; height:7px; border-radius:50%; background:var(--dsw-alias-state-idle-primary); font-size:0; }
+  .pw-reader-actions > #save-status[data-state="saved"] { background:var(--dsw-alias-state-success-primary); }
+  .pw-reader-actions > #save-status[data-state="saving"] { background:var(--dsw-alias-state-warn-primary); }
+  .pw-reader-actions > #save-status:is([data-state="failed"],[data-state="conflict"]) { background:var(--dsw-alias-state-error-primary); }
 }
 @media (max-width:760px) {
   .pw-header .pw-brand-label, .pw-jobs-full { display:none; }
   .pw-jobs-short { display:inline; }
   .pw-header .pw-brand { gap:0; }
-  .pw-header .pw-spacer { min-width:0; }
+  .pw-reader-actions > #reader-tools-toggle:not([hidden]) { font-size:0; }
+  .pw-reader-actions > #reader-tools-toggle::after { content:"⋯"; margin:0; font-size:16px; color:var(--h-ink); }
   html[data-pw-focus][data-windows-titlebar] .pw-header { gap:4px; padding-inline:6px; }
 }
 @media (max-width:520px) {
@@ -729,13 +747,38 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         useLocaleRevision()
         const colorScheme = useColorScheme()
         const rootRef = useRef(null)
+        const headerRef = useRef(null)
+        const headerNavRef = useRef(null)
+        const headerActionsRef = useRef(null)
+        const readerTitleSlot = useRef(null)
+        const readerActionSlot = useRef(null)
+        const releaseReaderHeader = useRef(null)
+        const detachReaderHeader = useCallback(() => {
+          releaseReaderHeader.current?.()
+          releaseReaderHeader.current = null
+        }, [])
         const pageMountedRef = useRef(false)
         const [returning, setReturning] = useState(false)
         const returningRef = useRef(false)
         useLayoutEffect(() => {
           pageMountedRef.current = true
           const leave = enterFocusShell(rootRef.current, ctx.layout)
-          return () => { pageMountedRef.current = false; navSeqRef.current++; leave() }
+          return () => { pageMountedRef.current = false; navSeqRef.current++; detachReaderHeader(); leave() }
+        }, [detachReaderHeader])
+        useLayoutEffect(() => {
+          const header = headerRef.current
+          const nav = headerNavRef.current
+          const actions = headerActionsRef.current
+          const measure = () => {
+            const bounds = header.getBoundingClientRect()
+            const center = (bounds.left + bounds.right) / 2
+            const clearance = Math.min(center - nav.getBoundingClientRect().right, actions.getBoundingClientRect().left - center)
+            header.style.setProperty('--pw-reader-title-width', `${Math.max(0, (clearance - 8) * 2)}px`)
+          }
+          const observer = new ResizeObserver(measure)
+          for (const element of [header, nav, actions]) observer.observe(element)
+          measure()
+          return () => observer.disconnect()
         }, [])
         const SessionProvider = props.SessionProvider
         const renderSlot = props.renderSlot
@@ -883,7 +926,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           const timer = setInterval(() => {
             try {
               const frame = iframeRef.current
-              const status = frame && frame.contentDocument ? frame.contentDocument.querySelector('#save-status') : null
+              const status = readerActionSlot.current?.querySelector('#save-status') || frame?.contentDocument?.querySelector('#save-status')
               if (status && status.dataset && status.dataset.state) lastReaderSaveRef.current = status.dataset.state
             } catch {
               /* the reader frame is between documents */
@@ -957,6 +1000,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                 backendPidRef.current = data.pid
                 frameReadyRef.current = false
                 const next = { ...targetRef.current, reloadToken: ++reloadTokenRef.current }
+                detachReaderHeader()
                 setFrameSrc(iframeUrl(next, colorSchemeRef.current))
               }
               timer = setTimeout(poll, ready && !restartingRef.current ? 15000 : 1500)
@@ -972,7 +1016,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             cancelled = true
             if (timer) clearTimeout(timer)
           }
-        }, [fetchStatus, statusRefresh])
+        }, [detachReaderHeader, fetchStatus, statusRefresh])
 
         const sendCommand = useCallback((command, payload, timeoutMs) => {
           const frame = iframeRef.current
@@ -1097,6 +1141,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             viewRef.current = target.view
             frameReadyRef.current = false
             setView(target.view)
+            detachReaderHeader()
             if (target.view === 'reader' && current.attachmentId !== target.attachmentId) {
               setAiScope('paper')
               setAskText('')
@@ -1109,7 +1154,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
               setPaperTitle('')
             }
           },
-          [rememberReadingPage, sendCommand, showNotice, t],
+          [detachReaderHeader, rememberReadingPage, sendCommand, showNotice, t],
         )
 
         const returnToHarness = useCallback(async () => {
@@ -1477,6 +1522,15 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
               }
               applyTheme(colorScheme)
               if (message.view === 'reader') {
+                const source = new URL(frame.contentWindow.location.href)
+                if (targetRef.current.view === 'reader' && source.pathname === `${BASE}/reader.html` &&
+                    source.searchParams.get('id') === targetRef.current.attachmentId &&
+                    readerTitleSlot.current && readerActionSlot.current) {
+                  detachReaderHeader()
+                  releaseReaderHeader.current = frame.contentWindow.paperWorkbenchReader?.mountHeader?.(
+                    readerTitleSlot.current, readerActionSlot.current,
+                  )
+                }
                 void refreshPaperContext()
               } else {
                 setPaper(null)
@@ -1503,7 +1557,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           }
           window.addEventListener('message', onMessage)
           return () => window.removeEventListener('message', onMessage)
-        }, [applyTheme, colorScheme, handleAiMessage, openView, refreshPaperContext])
+        }, [applyTheme, colorScheme, detachReaderHeader, handleAiMessage, openView, refreshPaperContext])
 
         useEffect(() => {
           const paperKey = aiScope==='master'?'__master__':paper ? paper.attachmentId : null
@@ -1693,79 +1747,85 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           'div',
           { className: 'pw-root', ref: rootRef },
           h('style', null, createStyles()),
+          view === 'reader' ? h('link', { rel: 'stylesheet', href: `${BASE}/reader-shell.css` }) : null,
           h(
             'header',
-            { className: 'pw-header' },
-            h('button', {
-              type: 'button', className: 'pw-button pw-return', disabled: returning,
-              title: t(returning ? 'nav.returning' : 'nav.return'), 'aria-label': t(returning ? 'nav.returning' : 'nav.return'),
-              onClick: () => void returnToHarness(),
-            }, h('svg', { width:18, height:18, viewBox:'0 0 24 24', fill:'none', 'aria-hidden':'true' },
-              h('rect', { x:3.5, y:4, width:17, height:16, rx:1.5, stroke:'currentColor', strokeWidth:1.5 }),
-              h('path', { d:'M9 4v16', stroke:'currentColor', strokeWidth:1.5 }))),
-            h('div', { className: 'pw-brand', title:t('page.title') }, h(PaperIcon, { size: 20, active: true }), h('span', { className:'pw-brand-label' }, t('page.title'))),
-            h(
-              'nav',
-              { className: 'pw-tabs', 'aria-label': t('page.title') },
+            { className: 'pw-header', ref: headerRef },
+            h('div', { className: 'pw-header-nav', ref: headerNavRef },
+              h('button', {
+                type: 'button', className: 'pw-button pw-return', disabled: returning,
+                title: t(returning ? 'nav.returning' : 'nav.return'), 'aria-label': t(returning ? 'nav.returning' : 'nav.return'),
+                onClick: () => void returnToHarness(),
+              }, h('svg', { width:18, height:18, viewBox:'0 0 24 24', fill:'none', 'aria-hidden':'true' },
+                h('rect', { x:3.5, y:4, width:17, height:16, rx:1.5, stroke:'currentColor', strokeWidth:1.5 }),
+                h('path', { d:'M9 4v16', stroke:'currentColor', strokeWidth:1.5 }))),
+              h('div', { className: 'pw-brand', title:t('page.title') }, h(PaperIcon, { size: 20, active: true }), h('span', { className:'pw-brand-label' }, t('page.title'))),
               h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'pw-tab',
-                  'data-active': String(view === 'library'),
-                  onClick: () => void openView({ view: 'library' }),
-                },
-                t('nav.library'),
-              ),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'pw-tab',
-                  'data-active': String(view === 'reader'),
-                  disabled: view === 'reader' || !lastReaderRef.current,
-                  onClick: () => void openView(lastReaderRef.current),
-                },
-                t('nav.reader'),
-              ),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'pw-tab',
-                  'data-active': String(view === 'tools'),
-                  onClick: () => void openView({ view: 'tools', tab: 'index' }),
-                },
-                t('nav.tools'),
+                'nav',
+                { className: 'pw-tabs', 'aria-label': t('page.title') },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'pw-tab',
+                    'data-active': String(view === 'library'),
+                    onClick: () => void openView({ view: 'library' }),
+                  },
+                  t('nav.library'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'pw-tab',
+                    'data-active': String(view === 'reader'),
+                    disabled: view === 'reader' || !lastReaderRef.current,
+                    onClick: () => void openView(lastReaderRef.current),
+                  },
+                  t('nav.reader'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'pw-tab',
+                    'data-active': String(view === 'tools'),
+                    onClick: () => void openView({ view: 'tools', tab: 'index' }),
+                  },
+                  t('nav.tools'),
+                ),
               ),
             ),
-            h('div', { className: 'pw-spacer' }),
-            h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>setJobsOpen(v=>!v)},
-              h('span',{className:'pw-jobs-full'},'初读与任务'),h('span',{className:'pw-jobs-short'},'任务'),
-              agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''),
-            h(
-              'button',
-              {
-                type: 'button',
-                className: 'pw-status',
-                'data-phase': backendReady ? 'ready' : phase,
-                title: statusError || (status && status.error) || statusText,
-                'aria-label': statusError || statusText,
-                onClick: () => setShowDiagnostics((value) => !value),
-              },
-              h('span', { className: 'pw-dot', 'aria-hidden': 'true' }),
-              h('span', { className:'pw-status-label' }, statusText),
-            ),
-            h(
-              'button',
-              {
-                type: 'button',
-                className: 'pw-button',
-                'data-variant': aiOpen ? 'quiet' : 'primary',
-                onClick: () => setAiOpen((value) => !value),
-                title: aiOpen ? t('ai.close') : t('ai.open'),
-              },
-              aiOpen ? t('ai.close') : t('ai.open'),
+            h('div', { className: 'pw-reader-title', ref: readerTitleSlot, role: 'heading', 'aria-level': 1 }),
+            h('div', { className: 'pw-header-actions', ref: headerActionsRef },
+              h('div', { className: 'pw-reader-actions', ref: readerActionSlot }),
+              h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>setJobsOpen(v=>!v)},
+                h('span',{className:'pw-jobs-full'},'初读与任务'),h('span',{className:'pw-jobs-short'},'任务'),
+                agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'pw-status',
+                  'data-phase': backendReady ? 'ready' : phase,
+                  title: statusError || (status && status.error) || statusText,
+                  'aria-label': statusError || statusText,
+                  onClick: () => setShowDiagnostics((value) => !value),
+                },
+                h('span', { className: 'pw-dot', 'aria-hidden': 'true' }),
+                h('span', { className:'pw-status-label' }, statusText),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'pw-button',
+                  'data-variant': aiOpen ? 'quiet' : 'primary',
+                  onClick: () => setAiOpen((value) => !value),
+                  title: aiOpen ? t('ai.close') : t('ai.open'),
+                },
+                aiOpen ? t('ai.close') : t('ai.open'),
+              ),
             ),
           ),
           notice ? h('div', { className: 'pw-notice', role: 'alert' }, notice) : null,
