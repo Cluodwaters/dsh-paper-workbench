@@ -462,7 +462,8 @@ window.__ModuleLoader__.load({
 .pw-empty strong { color:var(--dsw-alias-label-primary); font-size:13px; }
 .pw-conversation-host { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
 .pw-conversation-host [data-turn-tail] div:has(> .pw-summary-updated) { height:auto; min-height:calc(28px + var(--dsh-content-font-delta,0px)); flex-wrap:wrap; row-gap:2px; }
-.pw-summary-updated { order:1; color:var(--dsw-alias-label-tertiary); font-size:var(--dsh-content-font-size-secondary,13px); white-space:nowrap; }
+.pw-conversation-host [data-turn-tail] div:has(> .pw-summary-updated) > * { flex-shrink:0; max-width:100%; }
+.pw-summary-updated { order:1; color:var(--dsw-alias-label-tertiary); font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px); white-space:nowrap; }
 .pw-notice { margin:8px 12px 0; padding:7px 10px; border-radius:8px; border:1px solid var(--dsw-alias-state-error-primary); color:var(--dsw-alias-state-error-primary); background:var(--dsw-alias-bg-base); font-size:14px; }
 .pw-locate { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .pw-locate .pw-input { max-width:76px; }
