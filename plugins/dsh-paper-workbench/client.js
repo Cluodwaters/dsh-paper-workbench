@@ -60,6 +60,7 @@ window.__ModuleLoader__.load({
       'ai.pageLabel': '页码',
       'ai.sendFailed': '发送失败：{message}',
       'ai.notReady': '论文会话尚未就绪，请稍候。',
+      'ai.summaryUpdated': '摘要已更新',
       'ai.contextMissing': '未能读取当前论文的稳定来源信息，请重新打开论文。',
       'status.ready': '本地服务已就绪',
       'status.starting': '正在启动本地服务…',
@@ -124,6 +125,7 @@ window.__ModuleLoader__.load({
       'ai.pageLabel': 'Page',
       'ai.sendFailed': 'Send failed: {message}',
       'ai.notReady': 'The paper conversation is not ready yet.',
+      'ai.summaryUpdated': 'Summary updated',
       'ai.contextMissing': 'The current paper source identity is unavailable; reopen the paper.',
       'status.ready': 'Local service ready',
       'status.starting': 'Starting the local service…',
@@ -459,6 +461,8 @@ window.__ModuleLoader__.load({
 .pw-empty { margin:auto; padding:24px; max-width:320px; text-align:center; color:var(--dsw-alias-label-secondary); display:flex; flex-direction:column; gap:10px; align-items:center; }
 .pw-empty strong { color:var(--dsw-alias-label-primary); font-size:13px; }
 .pw-conversation-host { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.pw-conversation-host [data-turn-tail] div:has(> .pw-summary-updated) { height:auto; min-height:calc(28px + var(--dsh-content-font-delta,0px)); flex-wrap:wrap; row-gap:2px; }
+.pw-summary-updated { order:1; color:var(--dsw-alias-label-tertiary); font-size:var(--dsh-content-font-size-secondary,13px); white-space:nowrap; }
 .pw-notice { margin:8px 12px 0; padding:7px 10px; border-radius:8px; border:1px solid var(--dsw-alias-state-error-primary); color:var(--dsw-alias-state-error-primary); background:var(--dsw-alias-bg-base); font-size:14px; }
 .pw-locate { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
 .pw-locate .pw-input { max-width:76px; }
@@ -500,6 +504,16 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
     function createClient(ctx) {
       const t = ctx.locale.bind(NS)
       const services = { ctx, t }
+      const SummaryUpdates = React.createContext(null)
+
+      async function taskAction(action, input) {
+        const response = await fetch(`${BASE}/__workbench/agents/${action}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
+        })
+        const data = await response.json()
+        if (!response.ok) throw Error(data.error?.message || '操作失败')
+        return data
+      }
 
       function useLocaleRevision() {
         return React.useSyncExternalStore(
@@ -553,6 +567,12 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         return h(React.Fragment, null, props.renderSlot('conversation.session', { view: 'chat' }))
       }
 
+      function SummaryUpdatedAction({ messageId, t }) {
+        return React.useContext(SummaryUpdates)?.has(messageId)
+          ? h('span', { className: 'pw-summary-updated' }, t('ai.summaryUpdated'))
+          : null
+      }
+
       function PaperConversation(props) {
         const session = props.useSession((value) => value)
         // A paper Session is always bound to the plugin's dedicated Workspace and
@@ -563,13 +583,34 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         // the native input accepts the first message; while it opens, the shell
         // stays in its neutral settling phase.
         const open = session.openState === 'open'
+        const [updatedReplies, setUpdatedReplies] = useState(() => new Set())
+        useEffect(() => {
+          if (!open || !props.trackSummaries) return
+          let stopped = false, timer, after = 0
+          const check = async () => {
+            try {
+              const { updates } = await taskAction('summary-state', { sessionId: props.sessionId, after })
+              if (!stopped && updates.length) {
+                after = updates.at(-1).seq
+                setUpdatedReplies(previous => new Set([...previous, ...updates.map(update => update.messageId)]))
+              }
+            } catch { /* Retry on the next poll. */ }
+            if (!stopped) timer = setTimeout(check, 2500)
+          }
+          void check()
+          return () => { stopped = true; clearTimeout(timer) }
+        }, [open, props.sessionId, props.trackSummaries])
         return h(
           'div',
           { className: 'pw-conversation-host' },
-          props.renderFactorySlot(
-            'conversation.content',
-            { variant: 'embedded', phase: open ? 'active' : 'settling', hero: false },
-            { slots: { views: FixedChatConversationView } },
+          h(
+            SummaryUpdates.Provider,
+            { value: props.trackSummaries ? updatedReplies : null },
+            props.renderFactorySlot(
+              'conversation.content',
+              { variant: 'embedded', phase: open ? 'active' : 'settling', hero: false },
+              { slots: { views: FixedChatConversationView } },
+            ),
           ),
         )
       }
@@ -743,7 +784,6 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const [jobsOpen,setJobsOpen] = useState(false)
         const [summaryPreview,setSummaryPreview] = useState(null)
         const [topics,setTopics] = useState([])
-        const [summaryPending,setSummaryPending] = useState(false)
         const [paper, setPaper] = useState(null)
         const [paperTitle, setPaperTitle] = useState('')
         const [askText, setAskText] = useState('')
@@ -1274,7 +1314,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             lines.push(`用户问题：${question || '请介绍这篇论文的核心内容。'}`)
             lines.push('请优先依据本地论文内容回答；需要原文时调用 paper_read_pages 或 paper_get_annotations。')
           }
-          lines.push('输出要求：用中文回答；引用原文时标出页码（从 1 开始）；不确定的地方明确说明。PDF 保持只读，回答后可维护本篇共享摘要。')
+          lines.push('用中文直接回答问题，引用原文时标出页码（从 1 开始），并说明不确定之处。PDF 保持只读，工作台在回答后静默维护共享摘要。')
           return lines.join('\n\n')
         }, [])
 
@@ -1494,23 +1534,15 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           return ()=>{stopped=true;clearInterval(timer)}
         },[backendReady,sendCommand])
 
-        const taskAction=async(action,input)=>{
-          const response=await fetch(`${BASE}/__workbench/agents/${action}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)})
-          const data=await response.json()
-          if(!response.ok)throw Error(data.error?.message||'操作失败')
-          return data
-        }
         useEffect(()=>{
           if(!aiOpen || !session?.sessionId)return
           const key=aiScope==='master'?'__master__':paper?.attachmentId
-          if(!key || session.key!==key){setTopics([]);setSummaryPending(false);return}
+          if(!key || session.key!==key){setTopics([]);return}
           let stopped=false
-          const id=session.sessionId, scope={role:aiScope,attachmentId:paper?.attachmentId}
+          const scope={role:aiScope,attachmentId:paper?.attachmentId}
           setTopics([])
           void taskAction('topics',scope).then(r=>{if(!stopped)setTopics(r.items||[])}).catch(e=>{if(!stopped)showNotice(e.message)})
-          const check=()=>taskAction('summary-state',{sessionId:id}).then(r=>{if(!stopped)setSummaryPending(r.pending)}).catch(()=>{})
-          void check();const timer=setInterval(check,2500)
-          return ()=>{stopped=true;clearInterval(timer)}
+          return ()=>{stopped=true}
         },[aiOpen,session?.sessionId,aiScope,paper?.attachmentId])
         const switchTopic=async(sessionId)=>{
           const key=aiScope==='master'?'__master__':paper?.attachmentId
@@ -1891,7 +1923,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                   h('select',{className:'pw-input','aria-label':'会话话题',value:session?.sessionId||'',disabled:sessionBusy,onChange:e=>void switchTopic(e.target.value)},
                     ...topics.map(topic=>h('option',{key:topic.session_id,value:topic.session_id},`${topic.binding_key.includes(':topic:')?'话题':'初始会话'} · ${new Date(topic.created_at).toLocaleString()}`))),
                   h('button',{className:'pw-button',disabled:sessionBusy||!session,onClick:()=>void switchTopic()},'新话题'),
-                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void taskAction('digest',{attachmentId:paper.attachmentId}).then(d=>{setSummaryPreview(d);setJobsOpen(true)}).catch(e=>showNotice(e.message))},summaryPending?'摘要待更新':'共享摘要'):null,
+                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void taskAction('digest',{attachmentId:paper.attachmentId}).then(d=>{setSummaryPreview(d);setJobsOpen(true)}).catch(e=>showNotice(e.message))},'共享摘要'):null,
                 ),
                 aiScope==='paper' && paper
                   ? h(
@@ -2064,7 +2096,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                         ? h(
                             SessionProvider,
                             { key:activeSession.sessionId, session: activeSession.reference },
-                            renderSlot('paper-workbench.conversation', {}),
+                            renderSlot('paper-workbench.conversation', { trackSummaries: aiScope === 'paper' }),
                           )
                         : h(
                             'div',
@@ -2079,7 +2111,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         )
       }
 
-      return { PaperIcon, PaperPage, PaperConversation, StorageSettings, t }
+      return { PaperIcon, PaperPage, PaperConversation, SummaryUpdatedAction, StorageSettings, t }
     }
 
     return {
@@ -2148,6 +2180,9 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             ),
           'paper-workbench: embedded conversation',
         )
+        ctx.effect(() => ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
+          name: 'conversation.chat.assistant-actions', id: 'paper-workbench-summary', order: 40, locale: NS,
+        }, api.SummaryUpdatedAction)), 'paper-workbench: summary update indicator')
       },
     }
   },

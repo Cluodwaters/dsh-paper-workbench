@@ -693,18 +693,18 @@ export class AgentRepository {
         "SELECT * FROM paper_digests WHERE attachment_id=? ORDER BY version DESC LIMIT 1",
       )
       .get(attachmentId);
-    return row
-      ? {
-          attachmentId,
-          version: row.version,
-          sourceHash: row.source_hash,
-          sessionId: row.session_id,
-          sourceSeq: row.source_seq,
-          updatedAt: row.created_at,
-          stale: row.source_hash !== a.sourceHash,
-          summary: JSON.parse(row.payload_json),
-        }
-      : { attachmentId, summary: null, status: "unread" };
+    if (!row) return { attachmentId, summary: null, status: "unread" };
+    const { replyMessageId, ...summary } = JSON.parse(row.payload_json);
+    return {
+      attachmentId,
+      version: row.version,
+      sourceHash: row.source_hash,
+      sessionId: row.session_id,
+      sourceSeq: row.source_seq,
+      updatedAt: row.created_at,
+      stale: row.source_hash !== a.sourceHash,
+      summary,
+    };
   }
   coverage(a, sessionId, previous, reads = this.reads(sessionId)) {
     const old = !previous?.stale ? previous?.summary?.coverage : null;
@@ -733,7 +733,30 @@ export class AgentRepository {
       },
     };
   }
-  conversationSummary({ sessionId, digest, sourceSeq, expectedVersion }) {
+  conversationSummaryContext(sessionId) {
+    const binding = this.bySession(sessionId);
+    requireValue(binding?.role === "paper", "SESSION_SCOPE", "这不是论文阅读会话。", 403);
+    const attachment = this.store.attachment(binding.attachment_id);
+    const previous = this.digest(attachment.id);
+    return {
+      summary: previous.stale ? null : previous.summary,
+      version: previous.version || 0,
+      evidencePages: [...this.coverage(attachment, sessionId, previous).evidence].sort((a, b) => a - b),
+    };
+  }
+  conversationSummaryState(sessionId, after = 0) {
+    requireValue(Number.isSafeInteger(after) && after >= 0, "SESSION_SEQ", "无效会话位置。");
+    const binding = this.bySession(sessionId);
+    if (binding?.role !== "paper") return { pending: false, updates: [] };
+    const updates = this.db.prepare(`
+      SELECT source_seq AS seq, json_extract(payload_json,'$.replyMessageId') AS messageId
+      FROM paper_digests
+      WHERE attachment_id=? AND session_id=? AND source_seq>? AND messageId IS NOT NULL
+      ORDER BY source_seq
+    `).all(binding.attachment_id, sessionId, after).map(({ seq, messageId }) => ({ seq, messageId }));
+    return { pending: binding.summary_turn_seq > binding.published_seq, updates };
+  }
+  conversationSummary({ sessionId, digest, sourceSeq, expectedVersion, replyMessageId }) {
     return this.store.transaction(() => {
       const binding = this.bySession(sessionId);
       requireValue(
@@ -756,6 +779,12 @@ export class AgentRepository {
         "此轮摘要已保存或会话尚未保存。",
         409,
       );
+      requireValue(
+        replyMessageId === undefined ||
+          (typeof replyMessageId === "string" && replyMessageId.trim() && replyMessageId.length <= 200),
+        "AGENT_ID",
+        "无效回复标识。",
+      );
       const validated = validateDigest(digest, a.pages),
         coverage = this.coverage(a, sessionId, previous);
       requireValue(
@@ -770,6 +799,7 @@ export class AgentRepository {
         coverage: coverage.value,
       };
       const version = expectedVersion + 1;
+      const storedPayload = replyMessageId ? { ...payload, replyMessageId } : payload;
       const insert = this.db
         .prepare(
           "INSERT INTO paper_digests(attachment_id,source_hash,session_id,source_seq,version,payload_json,created_at) VALUES(?,?,?,?,?,?,?)",
@@ -780,7 +810,7 @@ export class AgentRepository {
           sessionId,
           sourceSeq,
           version,
-          JSON.stringify(payload),
+          JSON.stringify(storedPayload),
           now(),
         );
       this.db

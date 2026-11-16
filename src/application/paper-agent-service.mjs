@@ -205,6 +205,8 @@ export class PaperAgentService {
       enqueue: "attachmentId",
       item: "itemId",
       "mark-turn": "sessionId",
+      "summary-state": "sessionId",
+      "conversation-summary-context": "sessionId",
     }[action];
     if (idField)
       requireValue(
@@ -228,6 +230,8 @@ export class PaperAgentService {
         return r.topic(input);
       case "mark-turn":
         return r.markTurn(input.sessionId, input.seq);
+      case "summary-state":
+        return r.conversationSummaryState(input.sessionId, input.after);
       case "read-pages":
         return this.readPages(input);
       case "task-digest":
@@ -274,6 +278,8 @@ export class PaperAgentService {
         return r.search(input.query, input.offset || 0);
       case "digest":
         return r.digest(input.attachmentId);
+      case "conversation-summary-context":
+        return r.conversationSummaryContext(input.sessionId);
       case "conversation-summary": {
         const b = r.bySession(input.sessionId);
         requireValue(

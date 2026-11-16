@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createAgentCoordinator } from "../plugins/dsh-paper-workbench/agents.js";
 
-function fixture({ role = "paper", kind = "initial", abort = false, wait = false, onIdle } = {}) {
+function fixture({ role = "paper", kind = "initial", abort = false, wait = false, onIdle, onRequest } = {}) {
   const binding = {
     session_id: "fixture-session",
     role,
@@ -23,6 +23,7 @@ function fixture({ role = "paper", kind = "initial", abort = false, wait = false
   const messages = [],
     actions = [],
     listeners = new Map(),
+    agentOptions = [],
     definitions = [],
     restrictions = [],
     guards = [];
@@ -36,6 +37,8 @@ function fixture({ role = "paper", kind = "initial", abort = false, wait = false
     async request(url, { body }) {
       const action = url.split("/").pop();
       actions.push({ action, body });
+      const override = await onRequest?.(action, body);
+      if (override !== undefined) return override;
       if (["bind", "binding-session"].includes(action)) return binding;
       if (action === "pending")
         return job.state === "queued" ? [{ ...job }] : [];
@@ -60,12 +63,14 @@ function fixture({ role = "paper", kind = "initial", abort = false, wait = false
     get() {
       return agent;
     },
-    async resume() {
+    async resume(options) {
+      agentOptions.push(options.agentOptions);
       throw Object.assign(Error("missing"), {
         name: "SessionPersistenceNotFoundError",
       });
     },
     async create(options) {
+      agentOptions.push(options.agentOptions);
       agent = {
         id: binding.session_id,
         status: "idle",
@@ -132,6 +137,8 @@ function fixture({ role = "paper", kind = "initial", abort = false, wait = false
     job,
     actions,
     messages,
+    listeners,
+    agentOptions,
     definitions,
     restrictions,
     guards,
@@ -339,26 +346,62 @@ test("publishing a digest without identified metadata returns lossless JSON", as
   assert.deepEqual(JSON.parse(JSON.stringify(result)), result);
 });
 
-test("saving a conversation summary does not prematurely hide the user-facing answer", async (t) => {
-  const f = fixture();
+test("answered paper turns update the digest off-transcript without an output cap", async (t) => {
+  const requests = [];
+  let version = 1;
+  const f = fixture({
+    onRequest(action) {
+      if (action === "conversation-summary-context")
+        return { version, summary: { topic: "Existing topic", findings: `Version ${version}` }, evidencePages: [0] };
+      if (action === "conversation-summary" && version === 1) {
+        version++;
+        throw Object.assign(Error("Concurrent digest update"), { code: "SUMMARY_CONFLICT" });
+      }
+    },
+  });
   t.after(() => f.coordinator.stop());
+  f.services.llm = {
+    async *stream(options) {
+      requests.push(options);
+      yield { type: "text-delta", index: 0, text: '{"topic":"A paper"}' };
+      yield { type: "block-end", index: 0, block: { type: "text", text: '{"topic":"A paper"}' } };
+      yield { type: "finish", reason: { kind: "stop" } };
+    },
+  };
   await f.coordinator.ensure({ role: "paper", attachmentId: "fixture-paper" });
-  let concluded = false;
-  await f.definitions
-    .find((d) => d.name === "paper_update_summary")
-    .execute(
-      { digest: {}, expectedVersion: 0 },
-      {
-        concludeTurn() {
-          concluded = true;
-        },
-      },
-    );
-  assert.equal(
-    concluded,
-    false,
-    "the native model must still be able to produce its visible reply",
-  );
+  assert.equal(f.agentOptions.length, 2);
+  assert.ok(f.agentOptions.every(options => !Object.hasOwn(options, "maxTokens")));
+  assert.ok(!f.definitions.some(tool => tool.name === "paper_update_summary"));
+  assert.equal(f.listeners.has("agent/turn-stopping"), false);
+
+  const emit = (type, data, extra) => f.listeners.get("session/event")(f.agent.session, { type, data, ...extra });
+  const start = (turn) => {
+    emit("turn/start", { turn });
+    emit("user/message", { source: { kind: "user" }, content: [{ type: "text", text: "How does the method work?" }] }, { surfaceOp: "append" });
+    emit("assistant/message", { turn, message: {
+      id: `reply-${turn}`,
+      source: { provider: "reply-provider", model: "reply-model" },
+      content: [{ type: "text", text: "The method uses a control." }],
+    } });
+  };
+  start(1);
+  emit("turn/end", { turn: 1, reason: { kind: "max-tokens" } }, { seq: 15 });
+  start(2);
+  assert.equal(requests.length, 0);
+  emit("turn/end", { turn: 2, reason: { kind: "completed" } }, { seq: 21 });
+  await until(() => f.actions.filter(a => a.action === "conversation-summary").length === 2);
+  const saves = f.actions.filter(a => a.action === "conversation-summary").map(a => a.body);
+  assert.deepEqual(saves.map(save => save.expectedVersion), [1, 2]);
+  assert.ok(saves.every(save => save.replyMessageId === "reply-2" && save.sourceSeq === 21));
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(request => request.model === "reply-model" && !Object.hasOwn(request, "maxTokens")));
+  assert.deepEqual(JSON.parse(requests[1].messages[0].content[0].text), {
+    previousSummary: { topic: "Existing topic", findings: "Version 2" },
+    evidencePages: [0],
+    questions: ["How does the method work?"],
+    answer: "The method uses a control.",
+  });
+  assert.deepEqual(f.messages, []);
 });
 test("master runtime exposes catalog tools only and invokes native compaction at its budget", async (t) => {
   const f = fixture({ role: "master" });

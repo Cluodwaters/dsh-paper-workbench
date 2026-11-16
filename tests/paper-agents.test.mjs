@@ -519,11 +519,17 @@ test("later conversation summaries enforce optimistic versions, record incomplet
   const j = store.agents.claim(store.agents.pending()[0].id);
   await readAll(service, j);
   await service.publish(j.id, j.lease_token, { digest, sourceSeq: 20 });
+  const summaryState = (after) => service.handle("summary-state", { sessionId: j.session_id, after });
+  assert.deepEqual((await summaryState()).updates, []);
+  const context = await service.handle("conversation-summary-context", { sessionId: j.session_id });
+  assert.equal(context.version, 1);
+  assert.deepEqual(context.evidencePages, [0, 1]);
   assert.equal(
     store.agents.conversationSummary({
       sessionId: j.session_id,
       sourceSeq: 30,
       expectedVersion: 1,
+      replyMessageId: "saved-answer",
       digest,
     }).version,
     2,
@@ -534,10 +540,16 @@ test("later conversation summaries enforce optimistic versions, record incomplet
         sessionId: j.session_id,
         sourceSeq: 40,
         expectedVersion: 1,
+        replyMessageId: "stale-answer",
         digest,
       }),
     (e) => e.code === "SUMMARY_CONFLICT",
   );
+  assert.deepEqual((await summaryState()).updates, [{ seq: 30, messageId: "saved-answer" }]);
+  assert.deepEqual((await summaryState(30)).updates, []);
+  assert.ok(!Object.hasOwn(store.agents.digest(id).summary, "replyMessageId"));
+  const otherTopic = store.agents.topic({ role: "paper", attachmentId: id, requestId: randomUUID() });
+  assert.deepEqual(store.agents.conversationSummaryState(otherTopic.session_id).updates, []);
   const item = store.library.get(store.attachment(id).itemId);
   store.library.batch({
     requestId: randomUUID(),

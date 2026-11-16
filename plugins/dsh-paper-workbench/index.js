@@ -211,7 +211,7 @@ export function renderPaperContext(context) {
     lines.push('当前没有可见选区；需要原文时调用 paper_read_pages（使用上面的 attachmentId），不要臆造内容。')
   }
   lines.push(
-    '用户直接在聊天输入框发送的消息应结合本上下文理解；翻译/解释默认针对选区，没有选区时针对当前页；回答引用原文时标注页码（从 1 开始）；PDF 原件只读；书目信息只能通过获准的 paper_identify 保存，普通阅读问答只更新共享摘要。',
+    '用户直接在聊天输入框发送的消息应结合本上下文理解；翻译/解释默认针对选区，没有选区时针对当前页。直接回答用户的问题，引用原文时标注页码（从 1 开始）。PDF 原件只读；书目信息只能通过获准的 paper_identify 保存。工作台在回答后静默维护共享摘要。',
   )
   return lines.join('\n')
 }
