@@ -33,6 +33,10 @@ function assertInside(child, parent, label) {
   if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`${label} escapes ${parent}`)
 }
 
+// Node 25.8.1 can terminate in the native recursive-copy fast path on Windows.
+// A filter uses the supported per-entry copy path for the same file set.
+const treeCopy = { recursive: true, filter: () => true }
+
 function requireFile(file, label) {
   if (!existsSync(file) || !statSync(file).isFile()) throw new Error(`missing ${label}: ${file}`)
   return file
@@ -78,7 +82,7 @@ const licenseSource = existsSync(path.join(pluginRoot, 'LICENSE'))
   ? path.join(pluginRoot, 'LICENSE')
   : requireFile(path.join(repoRoot, 'LICENSE'), 'project LICENSE')
 cpSync(licenseSource, path.join(distRoot, 'LICENSE'))
-cpSync(path.join(pluginRoot, 'locale'), path.join(distRoot, 'locale'), { recursive: true })
+cpSync(path.join(pluginRoot, 'locale'), path.join(distRoot, 'locale'), treeCopy)
 
 const manifest = JSON.parse(readFileSync(path.join(pluginRoot, 'package.json'), 'utf8'))
 manifest.files = [
@@ -102,20 +106,18 @@ writeFileSync(path.join(distRoot, 'package.json'), `${JSON.stringify(manifest, n
 // installing a local .tgz must not require an extra online dependency fetch.
 for (const name of ['@deepseek-ai/schemastery', '@deepseek-ai/cosmokit', '@standard-schema/spec']) {
   const dependency = requireDir(path.join(repoRoot, 'node_modules', name), `Host dependency ${name}`)
-  cpSync(dependency, path.join(distRoot, 'node_modules', name), { recursive:true })
+  cpSync(dependency, path.join(distRoot, 'node_modules', name), treeCopy)
 }
 
 // 2. Backend: fresh source from the checkout plus verified staged production
 //    assets. The plugin does not modify the checked-in src.
 const backendRoot = path.join(distRoot, 'resources', 'backend')
 mkdirSync(backendRoot, { recursive: true })
-cpSync(requireDir(path.join(repoRoot, 'src'), 'root src'), path.join(backendRoot, 'src'), { recursive: true })
+cpSync(requireDir(path.join(repoRoot, 'src'), 'root src'), path.join(backendRoot, 'src'), treeCopy)
 cpSync(requireFile(path.join(stagedBackend, 'package.json'), 'staged backend package.json'), path.join(backendRoot, 'package.json'))
 cpSync(requireFile(path.join(stagedBackend, 'package-lock.json'), 'staged lockfile'), path.join(backendRoot, 'package-lock.json'))
 for (const directory of ['third_party', 'resources', 'node_modules']) {
-  cpSync(requireDir(path.join(stagedBackend, directory), `staged backend ${directory}`), path.join(backendRoot, directory), {
-    recursive: true,
-  })
+  cpSync(requireDir(path.join(stagedBackend, directory), `staged backend ${directory}`), path.join(backendRoot, directory), treeCopy)
 }
 for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'phase3-assets.lock.json', 'sources.lock.json', 'ARCHITECTURE.md', 'README.md']) {
   const source = path.join(file === 'THIRD_PARTY_NOTICES.md' ? repoRoot : stagedBackend, file)
@@ -141,6 +143,7 @@ const bridgeFiles = [
   'src/storage/migrations.mjs',
   'src/storage/migrations/004_agents.sql',
   'src/storage/migrations/005_agent_topics.sql',
+  'src/storage/migrations/006_agent_read_spans.sql',
   'src/domain/paper-agents.mjs',
   'src/adapters/zotero/ai-context.mjs',
   'src/web/harness-bridge.js',

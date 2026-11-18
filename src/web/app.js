@@ -17,6 +17,7 @@ function status(state, text) {
       ? "已保存"
       : text;
   $("retry").hidden = !["failed", "conflict"].includes(state);
+  $("retry").textContent = state === "conflict" ? "合并草稿" : "重试保存";
 }
 function notice(message) {
   $("notice").textContent = message;
@@ -98,6 +99,15 @@ $("save").addEventListener("click", async () => {
 });
 $("retry").addEventListener("click", async () => {
   try {
+    if (adapter.getSaveState() === "conflict") {
+      if (!window.confirm("将当前未保存的改动合并到资料库最新版本？同一条标注有冲突时采用本窗口的改动。取消可保留草稿，或先导出标注 JSON。")) return;
+      const id = adapter.document.attachment.id;
+      const latest = await api(`/api/documents/${id}`);
+      await adapter.persistence.mergeConflict(latest.snapshot);
+      await adapter.flush();
+      await openDocument(id);
+      return;
+    }
     await adapter.retry();
     await adapter.flush();
     $("notice").hidden = true;

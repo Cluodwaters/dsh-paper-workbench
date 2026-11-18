@@ -5,7 +5,7 @@ import { requireValue } from "../domain/errors.mjs";
 import { metadataFromCsl, searchKey } from "../domain/bibliography.mjs";
 import { writeMetadataIndex } from "./metadata-index.mjs";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 export function migrateDatabase(db, filename) {
   const originalVersion = db.prepare("PRAGMA user_version").get().user_version;
   requireValue(
@@ -24,7 +24,7 @@ export function migrateDatabase(db, filename) {
     );
     db.prepare("VACUUM INTO ?").run(backupPath);
   }
-  const steps = ["001_initial.sql", "002_library.sql", "003_fulltext.sql", "004_agents.sql", "005_agent_topics.sql"];
+  const steps = ["001_initial.sql", "002_library.sql", "003_fulltext.sql", "004_agents.sql", "005_agent_topics.sql", "006_agent_read_spans.sql"];
   for (
     let version = originalVersion + 1;
     version <= SCHEMA_VERSION;

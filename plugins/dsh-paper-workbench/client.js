@@ -827,8 +827,26 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         }
         const [aiScope,setAiScope] = useState(initialTarget.view === 'reader' ? 'paper' : 'master')
         const [agentJobs,setAgentJobs] = useState([])
+        const [autoReadEnabled,setAutoReadEnabled] = useState(false)
         const [jobsOpen,setJobsOpen] = useState(false)
         const [summaryPreview,setSummaryPreview] = useState(null)
+        const summaryRequest = useRef(0)
+        function clearSummary() {
+          summaryRequest.current++
+          setSummaryPreview(null)
+        }
+        async function showSummary(action, input, attachmentId, title) {
+          const request = ++summaryRequest.current
+          setSummaryPreview(null)
+          try {
+            const result = await taskAction(action, input)
+            if (!pageMountedRef.current || request !== summaryRequest.current || result.attachmentId !== attachmentId) return
+            setSummaryPreview({ ...result, title: result.title || title })
+            setJobsOpen(true)
+          } catch (error) {
+            if (pageMountedRef.current && request === summaryRequest.current) showNotice(error.message)
+          }
+        }
         const [topics,setTopics] = useState([])
         const [paper, setPaper] = useState(null)
         const [paperTitle, setPaperTitle] = useState('')
@@ -1135,6 +1153,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                 if (result?.ok) rememberReadingPage(result.value)
               }
             }
+            if (target.view !== current.view || target.attachmentId !== current.attachmentId) clearSummary()
             targetRef.current = target
             if (target.view === 'reader') lastReaderRef.current = target
             writeViewStore(target)
@@ -1582,6 +1601,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
               const data=await response.json()
               if(stopped)return
               setAgentJobs(data.jobs||[])
+              setAutoReadEnabled(data.autoRead === true)
               const signature=(data.jobs||[]).map(j=>`${j.id}:${j.updatedAt}`).join('|')
               if(jobsSignatureRef.current && signature!==jobsSignatureRef.current && viewRef.current==='library') void sendCommand('refresh').catch(()=>{})
               jobsSignatureRef.current=signature
@@ -1799,7 +1819,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             h('div', { className: 'pw-reader-title', ref: readerTitleSlot, role: 'heading', 'aria-level': 1 }),
             h('div', { className: 'pw-header-actions', ref: headerActionsRef },
               h('div', { className: 'pw-reader-actions', ref: readerActionSlot }),
-              h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>setJobsOpen(v=>!v)},
+              h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>{if(jobsOpen)clearSummary();setJobsOpen(!jobsOpen)}},
                 h('span',{className:'pw-jobs-full'},'初读与任务'),h('span',{className:'pw-jobs-short'},'任务'),
                 agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''),
               h(
@@ -1830,22 +1850,22 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           ),
           notice ? h('div', { className: 'pw-notice', role: 'alert' }, notice) : null,
           jobsOpen ? h('div',{style:{padding:'10px 16px',maxHeight:'240px',overflow:'auto',borderBottom:'1px solid var(--dsw-alias-border-l1)',fontSize:'14px'}},
-            h('p',null,'新导入论文会自动建立独立会话并初读全文，使用 DSH 当前默认模型。扫描页自动提取 OCR；无法识别和图表细节会列为待核查。'),
+            h('p',null,autoReadEnabled ? '新导入论文使用 DSH 当前默认模型进行自动初读。' : '自动初读已关闭。'),
             agentJobs.length?agentJobs.map(job=>h('div',{key:job.id,style:{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',padding:'6px 0'}},
               h('span',{style:{flex:'1 1 200px'}},job.title),
               h('span',null,job.kind==='initial'?'自动初读 · ':'委派阅读 · ',({queued:'排队 / 索引中',running:'读取中',completed:'摘要已保存',failed:'需要处理',cancelled:'已取消'})[job.state]||job.state,job.kind==='initial'?` · ${job.pageIndex}/${job.pageCount} 页`:''),
               job.error?h('span',{role:'status',style:{flexBasis:'100%'}},job.error):null,
               h('button',{className:'pw-button',onClick:()=>{setAiScope('paper');setAiOpen(true);void openView({view:'reader',attachmentId:job.attachmentId})}},'打开论文'),
-              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void taskAction('task-summary',{id:job.id}).then(setSummaryPreview).catch(e=>showNotice(e.message))},'查看摘要'):null,
+              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void showSummary('task-summary',{id:job.id},job.attachmentId,job.title)},'查看摘要'):null,
               ['queued','running'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('cancel',{id:job.id}).catch(e=>showNotice(e.message))},'取消'):null,
               ['failed','cancelled'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('retry',{id:job.id}).catch(e=>showNotice(e.message))},'重试'):null,
-            )):h('p',null,'暂无初读任务。导入新论文后会自动开始。'),
+            )):h('p',null,autoReadEnabled ? '暂无初读任务。导入新论文后会自动开始。' : '暂无初读任务。'),
             summaryPreview?h('div',{style:{paddingTop:'8px'}},
-              h('strong',null,`共享摘要 · 第 ${summaryPreview.version||0} 版${summaryPreview.stale?' · 已过期':''} · AI 生成，待核验`),
+              h('strong',null,`《${summaryPreview.title}》 · ${summaryPreview.version ? `共享摘要 · 第 ${summaryPreview.version} 版` : '尚无共享摘要'}${summaryPreview.stale?' · 已过期':''}${summaryPreview.version?' · AI 生成，待核验':''}`),
               ...Object.entries({topic:'文章主题',scientificQuestion:'科学问题',methods:'科学方法',argument:'行文逻辑',findings:'主要发现',limitations:'局限',openQuestions:'待核查'}).map(([key,label])=>h('p',{key},h('strong',null,label+'：'),summaryPreview.summary?.[key]||'尚无摘要')),
               h('p',null,'来源页：',(summaryPreview.summary?.evidencePages||[]).map(p=>p+1).join('、'),'；已提取文本覆盖 ',summaryPreview.summary?.coverage?.readPages||0,' 页。'),
               h('p',null,'图表和公式的视觉细节仍需核查。',summaryPreview.summary?.coverage?.gaps?.length?`未识别页：${summaryPreview.summary.coverage.gaps.map(p=>p+1).join('、')}`:''),
-              h('button',{className:'pw-button',onClick:()=>setSummaryPreview(null)},'收起摘要')):null,
+              h('button',{className:'pw-button',onClick:clearSummary},'收起摘要')):null,
           ):null,
           h(
             'div',
@@ -1986,7 +2006,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                   h('select',{className:'pw-input','aria-label':'会话话题',value:session?.sessionId||'',disabled:sessionBusy,onChange:e=>void switchTopic(e.target.value)},
                     ...topics.map(topic=>h('option',{key:topic.session_id,value:topic.session_id},`${topic.binding_key.includes(':topic:')?'话题':'初始会话'} · ${new Date(topic.created_at).toLocaleString()}`))),
                   h('button',{className:'pw-button',disabled:sessionBusy||!session,onClick:()=>void switchTopic()},'新话题'),
-                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void taskAction('digest',{attachmentId:paper.attachmentId}).then(d=>{setSummaryPreview(d);setJobsOpen(true)}).catch(e=>showNotice(e.message))},'共享摘要'):null,
+                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void showSummary('digest',{attachmentId:paper.attachmentId},paper.attachmentId,paperTitle)},'共享摘要'):null,
                 ),
                 aiScope==='paper' && paper
                   ? h(

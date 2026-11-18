@@ -176,7 +176,7 @@ export async function importFiles(
           if (cancelled) break;
           dialog.querySelector("#import-status").textContent =
             `正在处理 ${completed + 1}/${pdfs.length}：${file.name}`;
-          let message;
+          let message, archivedItem;
           try {
             if (file.size > maxBytes)
               throw new Error(
@@ -197,18 +197,45 @@ export async function importFiles(
             if (!response.ok) throw new Error(body.error.message);
             if (body.duplicate) {
               duplicates++;
-              message = "已存在，未重复导入";
+              if (body.item.archivedAt) archivedItem = body.item;
+              message = archivedItem ? "此 PDF 已在回收站" : "已存在，未重复导入";
             } else {
               success++;
               message = "已导入 · 书目信息待核对";
             }
-            firstItem ??= body.item.id;
+            if (!archivedItem) firstItem ??= body.item.id;
           } catch (error) {
             message = "未导入：" + error.message;
           }
           if (!dialog.isConnected) break;
           const row = document.createElement("p");
           row.innerHTML = `<strong>${esc(file.webkitRelativePath || file.name)}</strong><span>${esc(message)}</span>`;
+          if (archivedItem) {
+            const restore = document.createElement("button");
+            restore.type = "button";
+            restore.className = "text-button";
+            restore.textContent = "恢复到文献库";
+            const requestId = crypto.randomUUID();
+            restore.onclick = async () => {
+              restore.disabled = true;
+              try {
+                await api("/api/library/batch", {
+                  requestId,
+                  items: [{ id: archivedItem.id, expectedRevision: archivedItem.revision }],
+                  changes: { archived: false },
+                });
+                row.querySelector("span").textContent = "已恢复到文献库";
+                restore.remove();
+                await onComplete(archivedItem.id);
+              } catch (error) {
+                if (error.code === "METADATA_CONFLICT")
+                  row.querySelector("span").textContent = "条目已变化，请到回收站核对当前状态。";
+                else restore.disabled = false;
+                toast(error.message, true);
+              }
+            };
+            row.append(restore);
+          }
           dialog.querySelector("#import-results").append(row);
           completed++;
           dialog.querySelector("#import-progress").value = completed;

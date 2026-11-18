@@ -288,9 +288,10 @@ export function createAgentCoordinator(
       ),
       definition(
         "paper_read_pages",
-        "按页读取本篇论文，每次最多 4 页与 12000 字符。截断时应缩小范围；初读用 paper_read_next 可处理超长单页。",
+        "按页读取本篇论文，每次最多 4 页与 12000 字符。若页的 nextOffset 非空，只传该页和 startOffset=nextOffset 继续读。",
         {
           attachmentId: { type: "string" },
+          startOffset: { type: "integer", minimum: 0, description: "单页续读时使用上次返回的 nextOffset" },
           pageIndices: {
             type: "array",
             items: { type: "integer" },
@@ -305,6 +306,7 @@ export function createAgentCoordinator(
           return call("read-pages", {
             sessionId: agent.id,
             pageIndices: args.pageIndices,
+            startOffset: args.startOffset,
             ...(job ? { taskId: job.id, leaseToken: job.lease_token } : {}),
           });
         },

@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import { SqliteStore } from "../src/storage/sqlite-store.mjs";
 import { AiContextService } from "../src/application/ai-context-service.mjs";
 import { PaperAgentService } from "../src/application/paper-agent-service.mjs";
@@ -561,4 +562,87 @@ test("later conversation summaries enforce optimistic versions, record incomplet
     () => store.agents.digest(id),
     (e) => e.code === "ITEM_ARCHIVED",
   );
+});
+
+test("delegation abbreviates valid long metadata and digests without changing the originals", (t) => {
+  const { store, id } = setup(t, {autoRead: false});
+  const item = store.library.get(store.attachment(id).itemId);
+  const abstract = "A".repeat(800);
+  store.library.update(item.id, { requestId: randomUUID(), expectedRevision: item.revision, metadata: { ...item.metadata, abstract } });
+  const claim = () => store.agents.claim(store.agents.enqueue(id, { kind: "research", instruction: "inspect" }).id);
+  const first = claim();
+  assert.ok(first.briefing.includes("A".repeat(560)));
+  assert.ok(!first.briefing.includes("A".repeat(561)));
+  store.agents.stop(first.id, "cancelled", "", first.lease_token);
+  const binding = store.agents.ensure({role: "paper", attachmentId: id});
+  store.agents.recordReads(binding.session_id, [{pageIndex: 0}]);
+  store.agents.conversationSummary({sessionId: binding.session_id, expectedVersion: 0, sourceSeq: 1,
+    digest: {...digest, methods: "方".repeat(700)}});
+  const second = claim();
+  assert.ok(second.briefing.includes("方".repeat(210)));
+  assert.ok(!second.briefing.includes("方".repeat(211)));
+  assert.equal(store.agents.digest(id).summary.methods.length, 700);
+});
+
+test("page continuations cover only delivered ranges and empty pages cannot support summaries", async (t) => {
+  const {store, service, id} = setup(t, {autoRead: false, pages: ["a".repeat(24000) + "tail", ""]});
+  const binding = store.agents.ensure({role: "paper", attachmentId: id});
+  const read = (pageIndex, startOffset=0) => service.readPages({sessionId: binding.session_id, pageIndices: [pageIndex], startOffset});
+  const save = (pages, seq, version) => store.agents.conversationSummary({ sessionId: binding.session_id, expectedVersion: version, sourceSeq: seq, digest: {...digest, evidencePages: pages} });
+  await read(1);
+  assert.deepEqual(store.agents.conversationSummaryContext(binding.session_id).evidencePages, []);
+  assert.throws(() => save([1], 1, 0), {code: "DIGEST_EVIDENCE"});
+  assert.equal((await read(0, 24000)).pages[0].text, "tail");
+  const first = (await read(0)).pages[0];
+  assert.equal(first.nextOffset, 12000);
+  save([0], 2, 0);
+  assert.equal(store.agents.digest(id).summary.coverage.readPages, 0);
+  const next = (await read(0, first.nextOffset)).pages[0];
+  assert.equal(next.nextOffset, 24000);
+  save([0], 3, 1);
+  assert.deepEqual(store.agents.digest(id).summary.coverage.gaps, [1]);
+  assert.equal(store.agents.digest(id).summary.coverage.readPages, 1);
+  const job = store.agents.claim(store.agents.enqueue(id, {kind:"research", instruction:"inspect"}).id);
+  const task = {sessionId:job.session_id, taskId:job.id, leaseToken:job.lease_token};
+  await service.readPages({...task, pageIndices:[1]});
+  assert.throws(() => store.agents.publish(job.id, job.lease_token, digest, 4), {code: "READ_INCOMPLETE"});
+  assert.equal((await service.readPages({...task,pageIndices:[0],startOffset:24000})).pages[0].text, "tail");
+});
+
+test("status returns every active job and prioritizes an older running paper", (t) => {
+  const { store, service, id } = setup(t);
+  const running = store.agents.claim(store.agents.pending()[0].id);
+  for (let i=0; i<59; i++) store.agents.enqueue(id, {kind:"research", instruction:"follow up"});
+  const {jobs} = service.status();
+  assert.equal(jobs.length, 60);
+  assert.equal(jobs[0].id, running.id);
+  assert.equal(jobs[0].state, "running");
+});
+
+test("upgrading a v5 library excludes old empty-page evidence and preserves the historical snapshot and backup", (t) => {
+  const {store, dir, id, hash} = setup(t, {autoRead: false, pages:["readable evidence", ""]});
+  const session = store.agents.ensure({role:"paper", attachmentId:id}).session_id;
+  const legacyFile = path.join(dir, "old-library.sqlite");
+  store.db.prepare("VACUUM INTO ?").run(legacyFile);
+  const legacy = new DatabaseSync(legacyFile);
+  legacy.exec("ALTER TABLE agent_page_reads DROP COLUMN spans; PRAGMA user_version=5");
+  legacy.prepare("INSERT INTO agent_page_reads VALUES(?,?,?,?)").run(session,hash,1,1);
+  const payload = JSON.stringify({...digest,evidencePages:[1],coverage:{pageCount:2,readPages:2,gaps:[]}});
+  legacy.prepare("INSERT INTO paper_digests(attachment_id,source_hash,session_id,source_seq,version,payload_json,created_at) VALUES(?,?,?,?,?,?,?)")
+    .run(id, hash, session, 1, 1, payload, "2026-01-01");
+  legacy.close();
+  const upgraded = new SqliteStore(legacyFile);
+  try {
+    assert.equal(upgraded.migration.from,5);
+    const backup = new DatabaseSync(upgraded.migration.backupPath, {readOnly:true});
+    assert.equal(backup.prepare("PRAGMA user_version").get().user_version,5);
+    assert.equal(backup.prepare("SELECT count(*) AS n FROM agent_page_reads").get().n,1);
+    backup.close();
+    const result = upgraded.agents.digest(id);
+    assert.deepEqual(result.summary.evidencePages,[]);
+    assert.deepEqual(result.summary.coverage.gaps,[1]);
+    assert.equal(result.summary.coverage.readPages,1);
+    assert.equal(upgraded.agents.reads(session).length,0);
+    assert.equal(upgraded.db.prepare("SELECT payload_json FROM paper_digests").get().payload_json,payload);
+  } finally { upgraded.close(); }
 });

@@ -177,3 +177,21 @@ test("tokenizer handles Chinese-Latin mixed strings, scientific typography and q
   );
   assert.equal(fulltextPhrase("---"), null);
 });
+
+test("a stronger OCR request restarts weaker checkpoints while preserving the committed index", () => {
+  const {store, file} = setup();
+  const id = attach(store);
+  const job = store.fulltext.enqueue(id, "text");
+  store.fulltext.mark(job.id, "running");
+  store.fulltext.savePage(job.id, {pageIndex: 0, nativeText: "pending", ocrText: ""});
+  const stronger = store.fulltext.enqueue(id, "force-ocr");
+  assert.equal(stronger.id, job.id);
+  assert.equal(stronger.mode, "force-ocr");
+  assert.equal(stronger.status, "queued");
+  assert.deepEqual(store.fulltext.staged(job.id), []);
+  assert.throws(() => store.fulltext.savePage(job.id, {pageIndex: 0, nativeText:"late", ocrText:""}), {code:"JOB_STOPPED"});
+  store.close();
+  const reopened = new SqliteStore(file);
+  assert.equal(reopened.fulltext.enqueue(id, "ocr").mode, "force-ocr");
+  reopened.close();
+});

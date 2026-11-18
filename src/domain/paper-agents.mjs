@@ -25,17 +25,17 @@ export function researchBriefing(item, attachment, digest) {
     authors,
     journal,
     year,
-    doi: cleanText(item.metadata.doi, 140),
+    doi: item.metadata.doi.slice(0, 140),
   };
   const previous = digest.summary && !digest.stale ? digest.summary : null;
   if (previous) {
     info.summaryVersion = digest.version;
     info.summary = Object.fromEntries(
-      DIGEST_FIELDS.map((field) => [field, cleanText(previous[field], 210)]),
+      DIGEST_FIELDS.map((field) => [field, (previous[field] || "").slice(0, 210)]),
     );
     info.evidencePages = previous.evidencePages?.slice(0, 30) || [];
   } else {
-    const abstractExcerpt = cleanText(item.metadata.abstract, 560);
+    const abstractExcerpt = item.metadata.abstract.slice(0, 560);
     if (abstractExcerpt) info.catalogAbstractExcerpt = abstractExcerpt;
   }
   const summaryNote = previous

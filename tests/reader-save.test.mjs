@@ -11,6 +11,8 @@ function environment(t) {
   };
   const values = new Map();
   globalThis.localStorage = {
+    get length() { return values.size; },
+    key: (index) => [...values.keys()][index] ?? null,
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
     removeItem: (key) => values.delete(key),
@@ -156,4 +158,75 @@ test("explicit discard runs renderer cleanup before closing the desktop window",
   await c.run();
   assert.match(c.calls[0], /prepareClose\("discard"\)/);
   assert.equal(c.calls[1], "destroy");
+});
+
+test("a late acknowledgement from another reader cannot erase a conflicting draft", async (t) => {
+  environment(t);
+  const first = new PersistenceClient(snapshot, () => {});
+  const second = new PersistenceClient(snapshot, () => {});
+  await first.recover();
+  await second.recover();
+  let acknowledge;
+  globalThis.fetch = async (_, options) => {
+    const m = JSON.parse(options.body);
+    if (m.upserts[0].id === "first") return new Promise(resolve => { acknowledge = resolve; });
+    return Response.json({ error: { code: "REVISION_CONFLICT", message: "conflict" } }, { status: 409 });
+  };
+  const saved = first.enqueue([{ id: "first" }], []);
+  second.enqueue([{ id: "second" }], []);
+  await until(() => second.error);
+  acknowledge(Response.json({ revision: 1 }));
+  await saved;
+  assert.ok(localStorage.getItem(second.key));
+  const third = new PersistenceClient({ ...snapshot, revision: 1 }, () => {});
+  await third.recover();
+  assert.equal(third.queue.length, 0, "a live reader still owns the journal");
+  second.release();
+  const reopened = new PersistenceClient({ ...snapshot, revision: 1 }, () => {});
+  await reopened.recover();
+  assert.deepEqual(reopened.overlay([]), [{ id: "second" }]);
+  await reopened.pump();
+  assert.equal(reopened.error.code, "REVISION_CONFLICT");
+  globalThis.fetch = async (_, options) => {
+    assert.equal(JSON.parse(options.body).expectedRevision, 1);
+    return Response.json({ revision: 2 });
+  };
+  await reopened.mergeConflict({ ...snapshot, revision: 1 });
+  assert.equal(reopened.revision, 2);
+  assert.equal(localStorage.getItem(second.key), null);
+  for (const client of [first, third, reopened]) client.release();
+});
+
+test("a restored legacy conflict remains visible until the database acknowledges it", async (t) => {
+  environment(t);
+  const legacyKey = "paper-workbench:draft:v1:" + snapshot.attachmentId;
+  const mutation = { expectedRevision: 0, requestId: "legacy", sourceHash: snapshot.sourceHash,
+    upserts: [{ id: "old" }], deletions: [] };
+  localStorage.setItem(legacyKey, JSON.stringify({ schemaVersion: 1, sourceHash: snapshot.sourceHash, queue: [{ mutation }] }));
+  const states = [];
+  const adapter = new ZoteroReaderAdapter(null, state => states.push(state), () => {});
+  adapter.persistence = new PersistenceClient(snapshot, () => adapter.reportSaveState());
+  await adapter.persistence.recover();
+  globalThis.fetch = async () => Response.json({ error: { code: "REVISION_CONFLICT", message: "conflict" } }, {status: 409});
+  await adapter.persistence.pump();
+  adapter.reportSaveState();
+  assert.equal(states.at(-1), "conflict");
+  assert.equal(states.includes("saved"), false);
+  assert.ok(localStorage.getItem(legacyKey));
+  adapter.persistence.discard();
+  assert.equal(localStorage.getItem(legacyKey), null);
+});
+
+test("reader context uses the focused split pane and retains primary restoration position", () => {
+  const adapter = new ZoteroReaderAdapter(null, () => {}, () => {});
+  const pane = (page, text) => ({ _iframeWindow: { PDFViewerApplication: { pdfViewer: { currentPageNumber: page } },
+    getSelection: () => ({ anchorNode: { parentElement: { closest: selector => selector === ".page" ?
+      { dataset: { pageNumber: String(page) } } : {} } }, toString: () => text }) } });
+  adapter.document = { attachment: snapshot };
+  adapter.reader = { _primaryView: pane(1, "left"), _secondaryView: pane(3, "right"), _lastViewPrimary: false };
+  adapter.pdfApplication = adapter.reader._primaryView._iframeWindow.PDFViewerApplication;
+  const context = adapter.context();
+  assert.equal(context.pageIndex, 2);
+  assert.equal(context.readingPageIndex, 0);
+  assert.equal(context.selection.text, "right");
 });

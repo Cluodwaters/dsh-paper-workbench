@@ -31,7 +31,18 @@ export class FulltextRepository {
         "SELECT * FROM text_jobs WHERE attachment_id=? AND status IN ('queued','running')",
       )
       .get(attachmentId);
-    if (active) return active;
+    if (active) {
+      const priority = ["text", "ocr", "force-ocr"];
+      if (priority.indexOf(mode) <= priority.indexOf(active.mode)) return active;
+      // A checkpoint produced in a weaker mode cannot satisfy the new request.
+      // Leave the committed index intact until the stronger job finishes.
+      return this.store.transaction(() => {
+        this.db.prepare("DELETE FROM text_job_pages WHERE job_id=?").run(active.id);
+        this.db.prepare("UPDATE text_jobs SET mode=?,status='queued',updated_at=? WHERE id=?")
+          .run(mode, new Date().toISOString(), active.id);
+        return this.job(active.id);
+      });
+    }
     if (
       onlyMissing &&
       (this.db
@@ -203,15 +214,25 @@ export class FulltextRepository {
       )
       .all(id);
   }
-  currentPages(id, sourceHash) {
+  documentInfo(id, sourceHash) {
+    return this.db.prepare("SELECT page_count AS pageCount,empty_pages AS thinPages FROM text_documents WHERE attachment_id=? AND source_hash=?")
+      .get(id, sourceHash);
+  }
+  emptyPageIndices(id, sourceHash) {
+    return this.db.prepare(`SELECT p.page_index FROM page_text p JOIN text_documents d ON d.attachment_id=p.attachment_id
+      WHERE p.attachment_id=? AND d.source_hash=? AND trim(p.native_text || p.ocr_text,char(9,10,13,32))=''`)
+      .all(id, sourceHash).map(row => row.page_index);
+  }
+  currentPages(id, sourceHash, indices) {
     this.store.attachment(id);
     return this.db
       .prepare(
         `SELECT p.page_index AS pageIndex,p.native_text AS nativeText,p.ocr_text AS ocrText,p.confidence
        FROM page_text p JOIN text_documents d ON d.attachment_id=p.attachment_id
        JOIN attachments a ON a.id=p.attachment_id
-       WHERE p.attachment_id=? AND d.source_hash=? AND d.source_hash=a.sha256 ORDER BY p.page_index`,
+       WHERE p.attachment_id=? AND d.source_hash=? AND d.source_hash=a.sha256
+       ${indices ? "AND p.page_index IN (SELECT value FROM json_each(?))" : ""} ORDER BY p.page_index`,
       )
-      .all(id, sourceHash);
+      .all(id, sourceHash, ...(indices ? [JSON.stringify(indices)] : []));
   }
 }

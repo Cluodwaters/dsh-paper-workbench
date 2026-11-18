@@ -22,6 +22,22 @@ const parseJob = (row) =>
     progress: JSON.parse(row.progress_json),
     result: row.result_json ? JSON.parse(row.result_json) : null,
   };
+function mergePageRead(previous, page) {
+  const start = page.startOffset || 0;
+  const read = { pageIndex: page.pageIndex, complete: 1 };
+  if (previous?.complete || (!start && !page.truncated)) return read;
+  const intervals = [...(previous?.spans || [])];
+  if (page.endOffset > start) intervals.push([start, page.endOffset]);
+  intervals.sort((a, b) => a[0] - b[0]);
+  const spans = [];
+  for (const [from, to] of intervals) {
+    const last = spans.at(-1);
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+    else spans.push([from, to]);
+  }
+  if (spans.length === 1 && spans[0][0] === 0 && spans[0][1] === page.totalChars) return read;
+  return { pageIndex: page.pageIndex, complete: 0, spans };
+}
 export class AgentRepository {
   constructor(store) {
     this.store = store;
@@ -172,36 +188,27 @@ export class AgentRepository {
       "此会话不能读取正文。",
       403,
     );
-    const delivered = pages.filter(
-      (page) => page.text === undefined || page.text.length || page.source === "empty",
-    );
+    const delivered = pages.filter(page => page.source !== "empty" &&
+      (page.text === undefined || page.text.length > 0));
     if (task) {
       const job = this.active(task.id, task.token);
-      requireValue(
-        job.session_id === sessionId && job.attachment_id === b.attachment_id &&
-          job.source_hash === b.source_hash && job.kind !== "initial",
-        "SESSION_SCOPE",
-        "读取凭据不属于当前论文任务。",
-        403,
-      );
-      const recorded = this.taskReads(job);
-      const byPage = new Map(recorded.map((read) => [read.pageIndex, read.complete]));
-      for (const page of delivered) {
-        if (page.source !== "empty")
-          byPage.set(page.pageIndex, Math.max(byPage.get(page.pageIndex) || 0, page.truncated ? 0 : 1));
-      }
-      const reads = [...byPage].map(([pageIndex, complete]) => ({ pageIndex, complete }));
-      if (JSON.stringify(reads) !== JSON.stringify(recorded))
-        this.db
-          .prepare("UPDATE paper_jobs SET progress_json=?,updated_at=? WHERE id=?")
-          .run(JSON.stringify({ ...job.progress, reads }), now(), job.id);
+      requireValue(job.session_id === sessionId && job.attachment_id === b.attachment_id &&
+        job.source_hash === b.source_hash && job.kind !== "initial",
+        "SESSION_SCOPE", "读取凭据不属于当前论文任务。", 403);
+      const byPage = new Map(this.taskReads(job).map(read => [read.pageIndex, read]));
+      for (const page of delivered) byPage.set(page.pageIndex, mergePageRead(byPage.get(page.pageIndex), page));
+      this.db.prepare("UPDATE paper_jobs SET progress_json=?,updated_at=? WHERE id=?")
+        .run(JSON.stringify({ ...job.progress, reads: [...byPage.values()] }), now(), job.id);
       return { ok: true };
     }
-    const insert = this.db.prepare(
-      "INSERT INTO agent_page_reads VALUES(?,?,?,?) ON CONFLICT(session_id,source_hash,page_index) DO UPDATE SET complete=MAX(complete,excluded.complete)",
-    );
-    for (const page of delivered)
-      insert.run(sessionId, b.source_hash, page.pageIndex, page.truncated ? 0 : 1);
+    const find = this.db.prepare("SELECT complete,spans FROM agent_page_reads WHERE session_id=? AND source_hash=? AND page_index=?");
+    const save = this.db.prepare("INSERT OR REPLACE INTO agent_page_reads(session_id,source_hash,page_index,complete,spans) VALUES(?,?,?,?,?)");
+    for (const page of delivered) {
+      const key = [sessionId, b.source_hash, page.pageIndex];
+      const previous = find.get(...key);
+      const read = mergePageRead(previous && { complete: previous.complete, spans: JSON.parse(previous.spans) }, page);
+      save.run(...key, read.complete, JSON.stringify(read.spans || []));
+    }
     return { ok: true };
   }
   reads(sessionId) {
@@ -327,6 +334,18 @@ export class AgentRepository {
     );
     requireValue(j, "NOT_FOUND", "任务不存在。", 404);
     return j;
+  }
+  statusJobs() {
+    return this.db.prepare(`
+      SELECT j.id,j.attachment_id AS attachmentId,j.session_id AS sessionId,j.kind,j.state,
+        COALESCE(json_extract(j.progress_json,'$.pageIndex'),0) AS pageIndex,a.page_count AS pageCount,
+        m.title,j.error,j.updated_at AS updatedAt,json_extract(j.result_json,'$.version') AS summaryVersion
+      FROM paper_jobs j JOIN attachments a ON a.id=j.attachment_id JOIN item_metadata m ON m.item_id=a.item_id
+      WHERE j.state IN ('queued','running') OR j.id IN
+        (SELECT id FROM paper_jobs WHERE state NOT IN ('queued','running') ORDER BY updated_at DESC,id LIMIT 50)
+      ORDER BY CASE j.state WHEN 'running' THEN 0 WHEN 'queued' THEN 1 ELSE 2 END,
+        CASE WHEN j.state='queued' THEN j.created_at END,j.updated_at DESC,j.id
+    `).all();
   }
   list(limit = 50) {
     return this.db
@@ -505,7 +524,7 @@ export class AgentRepository {
         )
         .run(JSON.stringify(next), now(), id);
       this.recordReads(job.session_id, [
-        { pageIndex: chunk.pageIndex, truncated: !chunk.pageComplete, source: chunk.source },
+        { ...chunk, truncated: !chunk.pageComplete },
       ], job.kind === "initial" ? undefined : { id, token });
       return job.kind === "initial" ? next : this.job(id).progress;
     });
@@ -693,17 +712,18 @@ export class AgentRepository {
         "SELECT * FROM paper_digests WHERE attachment_id=? ORDER BY version DESC LIMIT 1",
       )
       .get(attachmentId);
-    if (!row) return { attachmentId, summary: null, status: "unread" };
+    if (!row) return { attachmentId, title: item.metadata.title, summary: null, status: "unread" };
     const { replyMessageId, ...summary } = JSON.parse(row.payload_json);
     return {
       attachmentId,
+      title: item.metadata.title,
       version: row.version,
       sourceHash: row.source_hash,
       sessionId: row.session_id,
       sourceSeq: row.source_seq,
       updatedAt: row.created_at,
       stale: row.source_hash !== a.sourceHash,
-      summary,
+      summary: row.source_hash === a.sourceHash ? this.checkedSummary(a, summary) : summary,
     };
   }
   coverage(a, sessionId, previous, reads = this.reads(sessionId)) {
@@ -712,26 +732,27 @@ export class AgentRepository {
       old?.readPages === a.pages
         ? Array.from({ length: a.pages }, (_, i) => i)
         : old?.readPageIndices || [];
-    const complete = [
-      ...new Set([
-        ...known,
-        ...reads.filter((p) => p.complete).map((p) => p.pageIndex),
-      ]),
-    ].sort((x, y) => x - y);
+    const blank = new Set(this.store.fulltext.emptyPageIndices(a.id, a.sourceHash));
+    const gaps = new Set([...blank, ...(old?.gaps || []).filter(i => !reads.some(r => r.pageIndex === i))]);
+    const complete = [...new Set([...known, ...reads.filter(p => p.complete).map(p => p.pageIndex)])]
+      .filter(i => !gaps.has(i)).sort((x, y) => x - y);
+    const evidence = new Set([...known, ...(!previous?.stale ? previous?.summary?.evidencePages || [] : []),
+      ...reads.map(p => p.pageIndex)].filter(i => !gaps.has(i)));
     return {
-      evidence: new Set([
-        ...known,
-        ...(!previous?.stale ? previous?.summary?.evidencePages || [] : []),
-        ...reads.map((p) => p.pageIndex),
-      ]),
+      evidence,
       value: {
-        pageCount: a.pages,
-        readPages: complete.length,
+        pageCount: a.pages, readPages: complete.length,
         ...(complete.length < a.pages ? { readPageIndices: complete } : {}),
-        gaps: old?.gaps || [],
-        visuals: "text-and-ocr-only",
+        gaps: [...gaps].sort((x, y) => x - y), visuals: "text-and-ocr-only",
       },
     };
+  }
+  checkedSummary(attachment, summary) {
+    // Older versions counted empty indexed pages as evidence. Keep the historical
+    // snapshot immutable and correct its coverage wherever it is presented.
+    const previous = { summary };
+    const { evidence, value } = this.coverage(attachment, null, previous, []);
+    return { ...summary, evidencePages: summary.evidencePages.filter(i => evidence.has(i)), coverage: value };
   }
   conversationSummaryContext(sessionId) {
     const binding = this.bySession(sessionId);

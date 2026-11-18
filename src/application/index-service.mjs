@@ -30,7 +30,11 @@ export class IndexService {
       "INDEX_IDS",
       "单次最多处理 2000 个附件。",
     );
-    const jobs = ids.map((id) => this.repository.enqueue(id, mode));
+    const jobs = ids.map((id) => {
+      const job = this.repository.enqueue(id, mode);
+      if (job.id === this.active?.id && job.status === "queued") this.active.process.kill();
+      return job;
+    });
     this.pump();
     return jobs;
   }
@@ -121,7 +125,7 @@ export class IndexService {
     const resetTimeout = () => {
       clearTimeout(active.timeout);
       active.timeout = setTimeout(() => {
-        if (!finished) {
+        if (!finished && this.repository.job(job.id).status === "running") {
           this.repository.mark(
             job.id,
             "failed",

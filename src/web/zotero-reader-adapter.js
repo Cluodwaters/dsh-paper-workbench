@@ -39,7 +39,8 @@ export class ZoteroReaderAdapter {
   }
   async open(document) {
     this.document = document;
-    this.persistence = new PersistenceClient(document.snapshot, this.onStatus);
+    this.persistence = new PersistenceClient(document.snapshot, () => this.reportSaveState());
+    await this.persistence.recover();
     const embedded = document.embeddedAnnotations || [];
     const externalIds = new Set(embedded.map((annotation) => annotation.id));
     const annotations = [
@@ -161,13 +162,19 @@ export class ZoteroReaderAdapter {
     this.pdfApplication.pdfViewer.update();
     await this.captureViewState();
     await this.persistence.pump();
-    this.timer = setInterval(() => {
-      if (this.persistence.error || this.stateError) return;
-      if (this.dirty()) this.onStatus("saving", "正在保存标注或阅读位置…");
-      else this.onStatus("saved", `已落盘 · 修订 ${this.persistence.revision}`);
-    }, 150);
-    this.onStatus("saved", `已落盘 · 修订 ${this.persistence.revision}`);
+    const updateStatus = () => this.reportSaveState();
+    updateStatus();
+    this.timer = setInterval(updateStatus, 150);
     return this;
+  }
+  reportSaveState() {
+    const state = this.getSaveState();
+    const error = this.persistence.error || this.stateError;
+    const message = state === "conflict" ? "保存冲突 · 本地草稿已保留"
+      : error ? "未保存：" + error.message
+      : state === "saving" ? "正在保存标注或阅读位置…"
+      : `已落盘 · 修订 ${this.persistence.revision}`;
+    this.onStatus(state, message);
   }
   saveViewState(state, primary) {
     if (this.closing) return Promise.resolve();
@@ -258,6 +265,7 @@ export class ZoteroReaderAdapter {
     await this.flush();
     this.pdfApplication?.eventBus.off("updateviewarea", this.viewAreaListener);
     clearInterval(this.timer);
+    this.persistence.release();
     this.frame.src = "about:blank";
     this.reader = null;
     this.pdfApplication = null;
@@ -282,7 +290,10 @@ export class ZoteroReaderAdapter {
   }
   context() {
     const attachment = this.document.attachment;
-    const pdfWindow = this.reader?._primaryView?._iframeWindow;
+    const view = this.reader?._lastViewPrimary === false && this.reader._secondaryView
+      ? this.reader._secondaryView : this.reader?._primaryView;
+    const pdfWindow = view?._iframeWindow;
+    const activePage = (pdfWindow?.PDFViewerApplication?.pdfViewer?.currentPageNumber ?? (this.currentPage() + 1)) - 1;
     const selection = pdfWindow?.getSelection();
     const anchor = selection?.anchorNode?.parentElement;
     const text = anchor?.closest(".textLayer")
@@ -298,7 +309,7 @@ export class ZoteroReaderAdapter {
       pageIndex:
         text && Number.isInteger(selectedPage) && selectedPage >= 0
           ? selectedPage
-          : this.currentPage(),
+          : activePage,
       ...(text ? { selection: { text } } : {}),
     };
   }

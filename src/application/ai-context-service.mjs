@@ -1,5 +1,6 @@
 import path from "node:path";
 import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { requireValue } from "../domain/errors.mjs";
 import { annotationExcerpts } from "../adapters/zotero/ai-context.mjs";
@@ -9,8 +10,9 @@ export class AiContextService {
   constructor({ store, dataRoot }) {
     this.store = store;
     this.dataRoot = path.resolve(dataRoot);
+    this.verified = new Map();
   }
-  async source(id, expectedHash) {
+  async source(id, expectedHash, { verify = false } = {}) {
     const attachment = this.store.attachment(id);
     requireValue(
       expectedHash === attachment.sourceHash,
@@ -25,14 +27,22 @@ export class AiContextService {
       "Invalid managed PDF path",
       500,
     );
+    const fingerprint = async () => {
+      const s = await stat(filename, { bigint: true });
+      return [expectedHash, s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(":");
+    };
+    const before = await fingerprint();
+    if (!verify && this.verified.get(filename) === before) return attachment;
     const hash = createHash("sha256");
     for await (const bytes of createReadStream(filename)) hash.update(bytes);
     requireValue(
-      hash.digest("hex") === expectedHash,
+      hash.digest("hex") === expectedHash && before === await fingerprint(),
       "SOURCE_CHANGED",
       "PDF 副本内容已变化，无法提供可靠的页码引用。",
       409,
     );
+    if (this.verified.size >= 64) this.verified.delete(this.verified.keys().next().value);
+    this.verified.set(filename, before);
     return attachment;
   }
   async context(input) {
@@ -63,17 +73,17 @@ export class AiContextService {
       "CONTEXT_PAGES",
       "每次可提供 1 至 12 个有效页码。",
     );
-    const pages = this.store.fulltext.currentPages(
-      attachment.id,
-      attachment.sourceHash,
-    );
+    const requested = [...new Set(indices)].sort((a, b) => a - b);
+    const startOffset = input.startOffset ?? 0;
+    requireValue(Number.isSafeInteger(startOffset) && startOffset >= 0 &&
+      (!startOffset || requested.length === 1), "PAGE_OFFSET", "续读时请选择一页并提供有效的起始位置。");
+    const pages = this.store.fulltext.currentPages(attachment.id, attachment.sourceHash, requested);
     requireValue(
       pages.length > 0,
       "INDEX_REQUIRED",
       "此论文尚未完成全文索引。请先在全文索引中提取正文；扫描页需要 OCR。",
       409,
     );
-    const requested = [...new Set(indices)].sort((a, b) => a - b);
     let remaining = limit;
     const selected = requested.map((pageIndex) => {
       const page = pages.find((p) => p.pageIndex === pageIndex);
@@ -86,7 +96,9 @@ export class AiContextService {
       const native = page.nativeText.trim(),
         ocr = page.ocrText.trim();
       const full = [native, ocr].filter(Boolean).join("\n\n");
-      const text = full.slice(0, remaining);
+      requireValue(startOffset <= full.length, "PAGE_OFFSET", "页内起始位置已超出正文范围。");
+      const text = full.slice(startOffset, startOffset + remaining);
+      const endOffset = startOffset + text.length;
       remaining -= text.length;
       return {
         pageIndex,
@@ -94,7 +106,11 @@ export class AiContextService {
         text,
         source:
           native && ocr ? "mixed" : ocr ? "ocr" : native ? "native" : "empty",
-        truncated: text.length < full.length,
+        startOffset,
+        endOffset,
+        totalChars: full.length,
+        nextOffset: endOffset < full.length ? endOffset : null,
+        truncated: endOffset < full.length,
       };
     });
     const item = this.store.library.get(attachment.itemId);

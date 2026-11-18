@@ -55,6 +55,8 @@ npm test
 
 原来的 `prepare-samples.py`、`prepare-fixtures.py` 用于自备样本的扩展验收。其输出可能包含本机路径，始终保留在被忽略的 `data/validation/`。
 
+发布版可用 `scripts/validate-patch-ui.mjs` 在临时 DSH 配置中复核。传入 `--archive` 安装包、`--previous` 上一版安装包、`--harness` 宿主目录、`--browser` 浏览器程序、`--playwright` 本地 Playwright 模块目录和 `--fixture` 合成 PDF。样本至少两页，第 2 页需可选中文字。脚本覆盖旧库升级、标注冲突合并、任务队列、摘要切换、分屏选文、回收站和包内 OCR。
+
 ## 构建 DSH 插件包
 
 完成依赖恢复及 Reader 构建后，在根目录运行：

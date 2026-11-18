@@ -11,27 +11,13 @@ export class PaperAgentService {
   status() {
     return {
       autoRead: this.store.autoRead,
-      jobs: this.repository.list().map((j) => ({
-        id: j.id,
-        attachmentId: j.attachment_id,
-        sessionId: j.session_id,
-        kind: j.kind,
-        state: j.state,
-        pageIndex: j.progress.pageIndex || 0,
-        pageCount: this.store.attachment(j.attachment_id).pages,
-        title: this.store.library.get(
-          this.store.attachment(j.attachment_id).itemId,
-        ).metadata.title,
-        error: j.error,
-        updatedAt: j.updated_at,
-        summaryVersion: j.result?.version || null,
-      })),
+      jobs: this.repository.statusJobs(),
     };
   }
   prepare(id) {
     const job = this.repository.job(id),
       a = this.store.attachment(job.attachment_id);
-    const pages = this.store.fulltext.currentPages(a.id, a.sourceHash);
+    const index = this.store.fulltext.documentInfo(a.id, a.sourceHash);
     const last = this.store.db
       .prepare(
         "SELECT * FROM text_jobs WHERE attachment_id=? AND source_hash=? ORDER BY created_at DESC,id DESC LIMIT 1",
@@ -44,10 +30,7 @@ export class PaperAgentService {
       };
     if (last && ["queued", "running"].includes(last.status))
       return { ready: false, waiting: "正在提取全文与 OCR" };
-    const thin = pages.some(
-      (p) => (p.nativeText.trim() + p.ocrText.trim()).length < 30,
-    );
-    if (pages.length !== a.pages || (thin && (!last || last.mode === "text"))) {
+    if (index?.pageCount !== a.pages || (index.thinPages > 0 && (!last || last.mode === "text"))) {
       this.indexer.enqueue([a.id], "ocr");
       return { ready: false, waiting: "正在提取全文与 OCR" };
     }
@@ -61,8 +44,7 @@ export class PaperAgentService {
     if (pageIndex >= a.pages)
       return { done: true, progress: job.progress, pageCount: a.pages };
     const page = this.store.fulltext
-      .currentPages(a.id, a.sourceHash)
-      .find((p) => p.pageIndex === pageIndex);
+      .currentPages(a.id, a.sourceHash, [pageIndex])[0];
     requireValue(page, "INDEX_INCOMPLETE", "全文索引尚未就绪。", 409);
     const full = [page.nativeText.trim(), page.ocrText.trim()]
       .filter(Boolean)
@@ -74,6 +56,7 @@ export class PaperAgentService {
         pageIndex,
         startOffset,
         endOffset,
+        totalChars: full.length,
         pageComplete: endOffset >= full.length,
         source: page.nativeText.trim()
           ? page.ocrText.trim()
@@ -126,7 +109,7 @@ export class PaperAgentService {
   }
   async publish(id, token, input) {
     const job = this.repository.job(id);
-    await this.context.source(job.attachment_id, job.source_hash);
+    await this.context.source(job.attachment_id, job.source_hash, { verify: true });
     const result = this.repository.publish(
       id,
       token,
@@ -175,6 +158,7 @@ export class PaperAgentService {
       attachmentId: b.attachment_id,
       sourceHash: b.source_hash,
       pageIndices: input.pageIndices,
+      startOffset: input.startOffset,
       maxChars: 12000,
     });
     this.store.transaction(() =>
@@ -240,8 +224,15 @@ export class PaperAgentService {
         return this.store.attachment(input.attachmentId);
       case "pending":
         return r.pending(input);
-      case "job":
-        return r.job(input.id);
+      case "job": {
+        const job = r.job(input.id);
+        if (job.state === "completed" && job.result?.digest) {
+          const attachment = this.store.attachment(job.attachment_id);
+          if (job.source_hash === attachment.sourceHash)
+            job.result.digest = r.checkedSummary(attachment, job.result.digest);
+        }
+        return job;
+      }
       case "task-summary": {
         const job = r.job(input.id);
         requireValue(
@@ -253,8 +244,10 @@ export class PaperAgentService {
         const attachment = this.store.attachment(job.attachment_id);
         return {
           attachmentId: attachment.id,
+          title: this.store.library.get(attachment.itemId).metadata.title,
           version: job.result.version,
-          summary: job.result.digest,
+          summary: job.source_hash === attachment.sourceHash
+            ? r.checkedSummary(attachment, job.result.digest) : job.result.digest,
           stale: job.source_hash !== attachment.sourceHash,
         };
       }
@@ -288,7 +281,7 @@ export class PaperAgentService {
           "会话无论文绑定。",
           403,
         );
-        await this.context.source(b.attachment_id, b.source_hash);
+        await this.context.source(b.attachment_id, b.source_hash, { verify: true });
         return r.conversationSummary(input);
       }
       case "item":
