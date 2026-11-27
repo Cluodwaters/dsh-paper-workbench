@@ -714,6 +714,7 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       },
       conversationsRoot: status.conversationsRoot,
       backendRoot: status.backendRoot,
+      runtimeProgress: status.runtimeProgress,
       node: status.node,
       uptimeMs: status.uptimeMs,
       logs: status.logs.slice(-40),
@@ -745,15 +746,28 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       return { status: 403, code: 'PAPER_WORKBENCH_HOST', message: '不支持的主机名' }
     }
     const connection = ctx.get('connection')
-    if (typeof connection?.requestRejection !== 'function') {
+    let rejection = null
+    if (typeof connection?.requestRejection === 'function') {
+      rejection = connection.requestRejection(request)
+    } else if (typeof connection?.admit === 'function') {
+      // DSH >= 0.2.3-alpha replaces requestRejection() with admit() returning PeerAdmission.
+      const admission = connection.admit(request)
+      if (!admission || !admission.peer) {
+        rejection = admission?.rejection || 401
+      }
+    } else {
       return { status: 503, code: 'PAPER_WORKBENCH_AUTH', message: 'Harness 浏览器会话服务尚未就绪' }
     }
-    const rejection = connection.requestRejection(request)
     if (rejection) {
       return {
         status: rejection,
         code: 'PAPER_WORKBENCH_AUTH',
-        message: rejection === 401 ? '需要已登录的 Harness 浏览器会话' : '请求来源不受信任',
+        message:
+          rejection === 401
+            ? '需要已登录的 Harness 浏览器会话'
+            : rejection === 503
+              ? 'Harness 浏览器会话服务尚未就绪'
+              : '请求来源不受信任',
       }
     }
     if (isWriteRequest(request) && !checkWriteOrigin(request)) {
@@ -894,10 +908,13 @@ function createRoutes(ctx, supervisor, paperContexts, coordinator, readLocation 
       if (request.method === 'POST') {
         try {
           const input = await readJsonBody(request)
-          const binding = coordinator.binding(input?.sessionId)
+          const binding =
+            coordinator.binding(input?.sessionId) ||
+            (await coordinator.resolveBinding(input?.sessionId).catch(() => null))
           if (binding?.role !== 'paper' || binding.attachment_id !== input?.context?.attachmentId) {
             return sendJson(response, 403, { error: { code: 'SESSION_SCOPE', message: '此会话未绑定该论文。' } })
           }
+          coordinator.touch(input.sessionId)
           const context = normalizePaperContext(input.context)
           if (context && binding.source_hash !== context.sourceHash) {
             return sendJson(response, 409, { error: { code: 'SOURCE_CHANGED', message: '论文版本已变化，请重新打开。' } })
@@ -1066,7 +1083,10 @@ export function apply(ctx, rawConfig) {
           await coordinator.beforeStep(agent, step, signal, decision)
           if (signal.aborted) return decision
           const sessionId = agent && typeof agent.id === 'string' ? agent.id : undefined
-          if (!sessionId || coordinator.binding(sessionId)?.role !== 'paper') return decision
+          const binding = sessionId
+            ? coordinator.binding(sessionId) || (await coordinator.resolveBinding(sessionId).catch(() => null))
+            : null
+          if (!sessionId || binding?.role !== 'paper') return decision
           const request = messages?.findLast(message => message.source?.kind === 'user')
           const context = paperContexts.get(sessionId, request?.source.rpcId)
           if (!context) return decision

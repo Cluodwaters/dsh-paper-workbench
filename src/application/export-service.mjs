@@ -91,9 +91,19 @@ export class ExportService {
       });
     });
     const id = randomUUID();
+    const rawBase =
+      attachment.originalName?.replace(/\.pdf$/i, "") ||
+      attachment.sampleKey ||
+      attachment.id;
+    const safeBase =
+      rawBase
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+        .replace(/[. ]+$/g, "")
+        .trim()
+        .slice(0, 80) || attachment.id;
     const relativePath = path.join(
       "exports",
-      `${attachment.sampleKey || attachment.id}-r${snapshot.revision}-${id}.pdf`,
+      `${safeBase}-r${snapshot.revision}-${id.slice(0, 8)}.pdf`,
     );
     const finalPath = path.join(this.dataRoot, relativePath);
     await mkdir(path.dirname(finalPath), { recursive: true });

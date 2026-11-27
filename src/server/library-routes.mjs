@@ -35,7 +35,10 @@ export function createLibraryRoutes({
         savedSearches: library.searches(),
         maxPdfBytes: imports.maxBytes,
         importExclusions: {
-          projectFolder: path.basename(projectRoot),
+          projectFolder:
+            path.basename(projectRoot).toLowerCase() === "backend"
+              ? "dsh-paper-workbench"
+              : path.basename(projectRoot),
           generatedFolders: [
             "data",
             "output",

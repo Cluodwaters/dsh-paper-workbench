@@ -77,6 +77,9 @@ window.__ModuleLoader__.load({
       'status.logs': '本地服务日志',
       'status.retry': '重试',
       'boot.waiting': '正在准备文献库…',
+      'boot.runtimeCopying': '正在准备本地运行环境：{completed} / {total} 个文件…',
+      'boot.runtimeChecking': '正在校验本地运行环境…',
+      'boot.storageCopying': '正在复制并校验资料：{copied} / {total} 个文件…',
       'boot.failedTitle': '本地文献服务暂时不可用',
       'boot.failedBody': '文献库和阅读器由本地 Paper Workbench 后台提供。请查看下面的诊断信息后重试；插件不会用假数据替代。',
       'notice.flushFailed': '标注还没有保存成功，已保留阅读页：{message}',
@@ -86,6 +89,66 @@ window.__ModuleLoader__.load({
       'notice.unsupported': '当前页面不支持该操作。',
       'error.frame': '文献页面加载失败。',
       'empty.tools': '选择工具后可查看全文索引或引用导出。',
+      'jobs.title': '初读与任务',
+      'jobs.short': '任务',
+      'jobs.autoReadOn': '新导入论文使用 DSH 当前默认模型进行自动初读。',
+      'jobs.autoReadOff': '自动初读已关闭。',
+      'jobs.emptyOn': '暂无初读任务。导入新论文后会自动开始。',
+      'jobs.emptyOff': '暂无初读任务。',
+      'jobs.initial': '自动初读 · ',
+      'jobs.research': '委派阅读 · ',
+      'jobs.state.queued': '排队 / 索引中',
+      'jobs.state.running': '读取中',
+      'jobs.state.completed': '摘要已保存',
+      'jobs.state.failed': '需要处理',
+      'jobs.state.cancelled': '已取消',
+      'jobs.openPaper': '打开论文',
+      'jobs.viewSummary': '查看摘要',
+      'jobs.cancel': '取消',
+      'jobs.retry': '重试',
+      'summary.title': '共享摘要',
+      'summary.version': '共享摘要 · 第 {version} 版',
+      'summary.none': '尚无共享摘要',
+      'summary.stale': ' · 已过期',
+      'summary.unverified': ' · AI 生成，待核验',
+      'summary.emptyField': '尚无摘要',
+      'summary.field.topic': '文章主题',
+      'summary.field.scientificQuestion': '科学问题',
+      'summary.field.methods': '科学方法',
+      'summary.field.argument': '行文逻辑',
+      'summary.field.findings': '主要发现',
+      'summary.field.limitations': '局限',
+      'summary.field.openQuestions': '待核查',
+      'summary.sources': '来源页：{pages}；已提取文本覆盖 {read} 页。',
+      'summary.visualNote': '图表和公式的视觉细节仍需核查。',
+      'summary.gaps': '未识别页：{pages}',
+      'summary.close': '收起摘要',
+      'ai.masterScope': '文献库助手',
+      'ai.paperScope': '本篇论文',
+      'ai.masterDesc': '管理文献与共享摘要',
+      'ai.topicLabel': '会话话题',
+      'ai.topicItem': '话题',
+      'ai.topicInitial': '初始会话',
+      'ai.newTopic': '新话题',
+      'ai.resizerLabel': '调整 AI 侧栏宽度',
+      'ai.resizerTitle': '拖动调整宽度；方向键微调；双击恢复默认',
+      'storage.aria': '文献工作台保存位置',
+      'storage.help': '设置论文、共享摘要及 Agent 工作目录的保存位置。完整聊天记录仍由 DSH 管理。',
+      'storage.current': '当前保存位置',
+      'storage.loading': '正在读取…',
+      'storage.next': '新的保存位置',
+      'storage.placeholder': '例如 D:\\PaperLibrary\\data',
+      'storage.picking': '正在选择…',
+      'storage.pick': '选择文件夹…',
+      'storage.hint': '选择文件夹后自动填入路径，也可手动填写。目标应为空文件夹或尚不存在。点击保存并完整重启后复制现有资料，校验通过才启用新位置；原目录保留，不会合并或覆盖其他资料库。',
+      'storage.pending': '等待完整重启后生效：',
+      'storage.copying': '正在复制并校验：{copied} / {total} 个文件。',
+      'storage.failed': '服务未启动：{error} 原资料保留在上面的当前保存位置。',
+      'storage.saving': '正在保存…',
+      'storage.save': '保存，重启后迁移',
+      'storage.reload': '重新读取设置',
+      'storage.cancelPending': '取消待生效更改',
+      'storage.readonly': '当前 DSH 配置只读，无法修改保存位置。',
     }
     const en = {
       'panel.title': 'Paper Workbench',
@@ -142,6 +205,9 @@ window.__ModuleLoader__.load({
       'status.logs': 'Local service log',
       'status.retry': 'Retry',
       'boot.waiting': 'Preparing the library…',
+      'boot.runtimeCopying': 'Preparing local runtime: {completed} / {total} files…',
+      'boot.runtimeChecking': 'Verifying local runtime…',
+      'boot.storageCopying': 'Copying and verifying library data: {copied} / {total} files…',
       'boot.failedTitle': 'The local literature service is unavailable',
       'boot.failedBody': 'The library and reader come from the local Paper Workbench backend. Review the diagnostics below and retry; the plugin never substitutes fake data.',
       'notice.flushFailed': 'Annotations were not saved, so the reading page stays open: {message}',
@@ -151,6 +217,66 @@ window.__ModuleLoader__.load({
       'notice.unsupported': 'This page does not support that action.',
       'error.frame': 'The literature page failed to load.',
       'empty.tools': 'Choose a tool to view full-text indexing or citation export.',
+      'jobs.title': 'Reading & tasks',
+      'jobs.short': 'Tasks',
+      'jobs.autoReadOn': 'Newly imported papers are read automatically using the current default DSH model.',
+      'jobs.autoReadOff': 'Automatic initial reading is off.',
+      'jobs.emptyOn': 'No reading tasks yet. Import a new paper to start automatically.',
+      'jobs.emptyOff': 'No reading tasks yet.',
+      'jobs.initial': 'Initial read · ',
+      'jobs.research': 'Delegated read · ',
+      'jobs.state.queued': 'Queued / indexing',
+      'jobs.state.running': 'Reading',
+      'jobs.state.completed': 'Summary saved',
+      'jobs.state.failed': 'Needs attention',
+      'jobs.state.cancelled': 'Cancelled',
+      'jobs.openPaper': 'Open paper',
+      'jobs.viewSummary': 'View summary',
+      'jobs.cancel': 'Cancel',
+      'jobs.retry': 'Retry',
+      'summary.title': 'Shared summary',
+      'summary.version': 'Shared summary · v{version}',
+      'summary.none': 'No shared summary yet',
+      'summary.stale': ' · Stale',
+      'summary.unverified': ' · AI generated, verify against PDF',
+      'summary.emptyField': 'Not yet discussed',
+      'summary.field.topic': 'Topic',
+      'summary.field.scientificQuestion': 'Research question',
+      'summary.field.methods': 'Methods',
+      'summary.field.argument': 'Argument flow',
+      'summary.field.findings': 'Key findings',
+      'summary.field.limitations': 'Limitations',
+      'summary.field.openQuestions': 'Open questions',
+      'summary.sources': 'Source pages: {pages}; extracted text covers {read} pages.',
+      'summary.visualNote': 'Verify figures, tables and equations against the original PDF.',
+      'summary.gaps': 'Unrecognized pages: {pages}',
+      'summary.close': 'Hide summary',
+      'ai.masterScope': 'Library assistant',
+      'ai.paperScope': 'This paper',
+      'ai.masterDesc': 'Manage catalog & shared summaries',
+      'ai.topicLabel': 'Conversation topic',
+      'ai.topicItem': 'Topic',
+      'ai.topicInitial': 'Initial session',
+      'ai.newTopic': 'New topic',
+      'ai.resizerLabel': 'Resize AI panel',
+      'ai.resizerTitle': 'Drag to resize; arrow keys to nudge; double-click to reset',
+      'storage.aria': 'Paper Workbench storage location',
+      'storage.help': 'Choose where papers, shared summaries and Agent working directories are stored. Full chat logs remain managed by DSH.',
+      'storage.current': 'Current location',
+      'storage.loading': 'Loading…',
+      'storage.next': 'New location',
+      'storage.placeholder': 'e.g. D:\\PaperLibrary\\data',
+      'storage.picking': 'Selecting…',
+      'storage.pick': 'Choose folder…',
+      'storage.hint': 'Pick a folder or type a full local path. Target must be empty or not exist yet. Existing data is copied and verified after a full restart; the old directory is kept.',
+      'storage.pending': 'Pending full restart:',
+      'storage.copying': 'Copying and verifying: {copied} / {total} files.',
+      'storage.failed': 'Service failed to start: {error} Original data remains in the current location above.',
+      'storage.saving': 'Saving…',
+      'storage.save': 'Save & migrate on restart',
+      'storage.reload': 'Reload settings',
+      'storage.cancelPending': 'Cancel pending change',
+      'storage.readonly': 'DSH settings are read-only; storage location cannot be changed.',
     }
 
     function format(template, values) {
@@ -443,13 +569,17 @@ window.__ModuleLoader__.load({
 .pw-body[data-stacked="true"] .pw-frame-area { flex:1 1 45%; }
 .pw-body[data-stacked="true"] .pw-resizer { display:none; }
 .pw-panel[data-collapsed="true"] { display:none; }
-.pw-panel-head { display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-bottom:1px solid var(--dsw-alias-border-l1); flex:0 0 auto; }
-.pw-panel-title-row { display:flex; align-items:center; gap:8px; }
+.pw-panel-head { display:flex; flex-direction:column; gap:5px; padding:7px 10px; border-bottom:1px solid var(--dsw-alias-border-l1); flex:0 0 auto; }
+.pw-panel-title-row { display:flex; align-items:center; gap:6px; }
 .pw-panel-title { font-weight:600; font-size:13px; }
 .pw-paper-title { color:var(--dsw-alias-label-secondary); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
-.pw-chip-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.pw-chip-row { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
 .pw-topic-row { display:grid; grid-template-columns:minmax(110px,1fr) auto auto; }
+.pw-topic-row[data-scope="master"] { grid-template-columns:minmax(110px,1fr) auto; }
 .pw-topic-row > .pw-chip { grid-column:1 / -1; display:block; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pw-summary-sheet { padding:12px 16px; max-height:min(55vh, 460px); overflow:auto; border-bottom:1px solid var(--dsw-alias-border-l1); background:var(--dsw-alias-bg-layer-1); font-size:14px; flex:0 0 auto; }
+.pw-summary-sheet-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.pw-summary-sheet p { margin:5px 0; line-height:1.55; }
 .pw-settings { max-width:680px; padding:20px 24px; font:inherit; line-height:1.6; color:var(--dsw-alias-label-primary); }
 .pw-settings, .pw-settings * { box-sizing:border-box; }
 .pw-settings h2 { margin:0 0 8px; font-size:20px; }
@@ -480,8 +610,9 @@ window.__ModuleLoader__.load({
   .pw-summary-updated { flex:0 0 100%; box-sizing:border-box; padding:0 6px 2px; }
 }
 .pw-notice { margin:8px 12px 0; padding:7px 10px; border-radius:8px; border:1px solid var(--dsw-alias-state-error-primary); color:var(--dsw-alias-state-error-primary); background:var(--dsw-alias-bg-base); font-size:14px; }
-.pw-locate { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.pw-locate .pw-input { max-width:76px; }
+.pw-locate { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.pw-locate .pw-input { max-width:60px; padding:3px 7px; }
+.pw-locate .pw-button { padding:3px 7px; font-size:13px; }
 .pw-footer-note { padding:6px 12px; color:var(--dsw-alias-label-secondary); font-size:13px; border-top:1px solid var(--dsw-alias-border-l1); }
 html[data-pw-focus] [data-pw-shell] { grid-template-columns:0 minmax(0,1fr) 0 !important; }
 html[data-pw-focus] [data-pw-host-sidebar], html[data-pw-focus] [data-shell-leading], html[data-pw-focus] [data-windows-menu] { display:none !important; }
@@ -531,8 +662,8 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const response = await fetch(`${BASE}/__workbench/agents/${action}`, {
           method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
         })
-        const data = await response.json()
-        if (!response.ok) throw Error(data.error?.message || '操作失败')
+        const data = await response.json().catch(() => null)
+        if (!response.ok) throw Error(data?.error?.message || `操作失败（HTTP ${response.status}）`)
         return data
       }
 
@@ -648,6 +779,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const [canPick, setCanPick] = useState(false)
         const pickerBusy = useRef(false)
         const [error, setError] = useState('')
+        const [pollError, setPollError] = useState('')
         const [message, setMessage] = useState('')
         const mounted = useRef(true)
         useEffect(() => {
@@ -666,8 +798,8 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
               const response = await fetch(`${BASE}/__workbench/status`, { cache:'no-store' })
               if (!response.ok) throw new Error('无法读取当前保存位置。')
               const value = await response.json()
-              if (mounted.current) setStatus(value)
-            } catch (e) { if (mounted.current) setError(e.message) }
+              if (mounted.current) { setStatus(value); setPollError('') }
+            } catch (e) { if (mounted.current) setPollError(e.message) }
             if (mounted.current) timer = setTimeout(poll, 1500)
           }
           void poll()
@@ -676,6 +808,7 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const active = status?.storage?.activeRoot || status?.dataRoot || ''
         const saved = snapshot.value?.storageLocation?.to || active
         const pending = saved && active && normalizeWorkspacePath(saved) !== normalizeWorkspacePath(active)
+        const sameAsSaved = Boolean(draft.trim() && saved && normalizeWorkspacePath(draft.trim()) === normalizeWorkspacePath(saved))
         const migrating = status?.storage?.progress?.phase === 'copying'
         useEffect(() => {
           if (!dirty && !busy && !picking) { setDraft(saved); setRevision(snapshot.revision) }
@@ -720,26 +853,26 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           finally { if (mounted.current) setBusy(false) }
         }
         const disabled = busy || picking || migrating || !active || !snapshot.writable || snapshot.revision === undefined
-        return h('section', {className:'pw-settings','aria-label':'文献工作台保存位置'},
+        return h('section', {className:'pw-settings','aria-label':t('storage.aria')},
           h('style', null, createStyles()),
-          h('h2', null, '文献工作台'),
-          h('p', {className:'pw-settings-help'}, '设置论文、共享摘要及 Agent 工作目录的保存位置。完整聊天记录仍由 DSH 管理。'),
-          h('label', null, '当前保存位置'),
-          h('span', {className:'pw-settings-path','data-storage-active':true}, active || '正在读取…'),
-          h('label', {htmlFor:'pw-storage-path'}, '新的保存位置'),
+          h('h2', null, t('page.title')),
+          h('p', {className:'pw-settings-help'}, t('storage.help')),
+          h('label', null, t('storage.current')),
+          h('span', {className:'pw-settings-path','data-storage-active':true}, active || t('storage.loading')),
+          h('label', {htmlFor:'pw-storage-path'}, t('storage.next')),
           h('div', {className:'pw-settings-location'},
-            h('input', {id:'pw-storage-path',className:'pw-input',value:draft,disabled,placeholder:'例如 D:\\PaperLibrary\\data',spellCheck:false,onChange:e=>{setDraft(e.target.value);setDirty(true);setMessage('')}}),
-            h('button', {className:'pw-button',disabled:disabled || !canPick,onClick:()=>void chooseDirectory(),'aria-controls':'pw-storage-path'}, picking ? '正在选择…' : '选择文件夹…')),
-          h('p', {className:'pw-settings-help'}, '选择文件夹后自动填入路径，也可手动填写。目标应为空文件夹或尚不存在。点击保存并完整重启后复制现有资料，校验通过才启用新位置；原目录保留，不会合并或覆盖其他资料库。'),
-          pending ? h('p', {'data-storage-pending':true}, '等待完整重启后生效：', h('span',{className:'pw-settings-path'},saved)) : null,
-          migrating ? h('p', {role:'status'}, `正在复制并校验：${status.storage.progress.copiedFiles} / ${status.storage.progress.totalFiles} 个文件。`) : null,
-          status?.phase === 'failed' ? h('p', {role:'alert'}, `服务未启动：${status.error} 原资料保留在上面的当前保存位置。`) : null,
+            h('input', {id:'pw-storage-path',className:'pw-input',value:draft,disabled,placeholder:t('storage.placeholder'),spellCheck:false,onChange:e=>{setDraft(e.target.value);setDirty(true);setMessage('')}}),
+            h('button', {className:'pw-button',disabled:disabled || !canPick,onClick:()=>void chooseDirectory(),'aria-controls':'pw-storage-path'}, picking ? t('storage.picking') : t('storage.pick'))),
+          h('p', {className:'pw-settings-help'}, t('storage.hint')),
+          pending ? h('p', {'data-storage-pending':true}, t('storage.pending'), h('span',{className:'pw-settings-path'},saved)) : null,
+          migrating ? h('p', {role:'status'}, format(t('storage.copying'), { copied: status.storage.progress.copiedFiles, total: status.storage.progress.totalFiles })) : null,
+          status?.phase === 'failed' ? h('p', {role:'alert'}, format(t('storage.failed'), { error: status.error })) : null,
           h('div', {className:'pw-settings-actions'},
-            h('button', {className:'pw-button','data-variant':'primary',disabled:disabled || !draft.trim() || draft.trim() === saved,onClick:()=>void save(draft)}, busy ? '正在保存…' : '保存，重启后迁移'),
-            h('button', {className:'pw-button',disabled:busy || picking || migrating,onClick:restoreDraft}, '重新读取设置'),
-            pending ? h('button', {className:'pw-button',disabled,onClick:()=>void save(active,true)}, '取消待生效更改') : null),
-          !snapshot.writable && snapshot.revision !== undefined ? h('p',{role:'alert'},'当前 DSH 配置只读，无法修改保存位置。') : null,
-          error ? h('p', {role:'alert'}, error) : null,
+            h('button', {className:'pw-button','data-variant':'primary',disabled:disabled || !draft.trim() || sameAsSaved,onClick:()=>void save(draft)}, busy ? t('storage.saving') : t('storage.save')),
+            h('button', {className:'pw-button',disabled:busy || picking || migrating,onClick:restoreDraft}, t('storage.reload')),
+            pending ? h('button', {className:'pw-button',disabled,onClick:()=>void save(active,true)}, t('storage.cancelPending')) : null),
+          !snapshot.writable && snapshot.revision !== undefined ? h('p',{role:'alert'},t('storage.readonly')) : null,
+          error || pollError ? h('p', {role:'alert'}, error || pollError) : null,
           message ? h('p', {role:'status'}, message) : null)
       }
 
@@ -842,7 +975,6 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             const result = await taskAction(action, input)
             if (!pageMountedRef.current || request !== summaryRequest.current || result.attachmentId !== attachmentId) return
             setSummaryPreview({ ...result, title: result.title || title })
-            setJobsOpen(true)
           } catch (error) {
             if (pageMountedRef.current && request === summaryRequest.current) showNotice(error.message)
           }
@@ -1624,13 +1756,15 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
         const switchTopic=async(sessionId)=>{
           const key=aiScope==='master'?'__master__':paper?.attachmentId
           if(sessionBusy || !key || sessionRef.current?.key!==key)return
+          const generation = sessionGenerationRef.current
+          const scope = { role: aiScope, ...(aiScope === 'paper' ? { attachmentId: paper?.attachmentId } : {}) }
           setSessionBusy(true)
           try{
-            const scope={role:aiScope,attachmentId:paper?.attachmentId}
             await taskAction('topic',{...scope,...(sessionId?{sessionId}:{requestId:crypto.randomUUID()})})
+            if(!pageMountedRef.current || generation !== sessionGenerationRef.current) return
             releaseSession()
-            await ensureSession(aiScope==='master'?'__master__':paper.attachmentId,paper)
-          }catch(e){showNotice(e.message)}finally{setSessionBusy(false)}
+            await ensureSession(key, key === '__master__' ? null : paperRef.current)
+          }catch(e){if(pageMountedRef.current)showNotice(e.message)}finally{if(pageMountedRef.current)setSessionBusy(false)}
         }
 
         // Keep the Host's per-Session context registry current for the native chat
@@ -1819,8 +1953,8 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
             h('div', { className: 'pw-reader-title', ref: readerTitleSlot, role: 'heading', 'aria-level': 1 }),
             h('div', { className: 'pw-header-actions', ref: headerActionsRef },
               h('div', { className: 'pw-reader-actions', ref: readerActionSlot }),
-              h('button',{type:'button',className:'pw-button',title:'初读与任务','aria-label':'初读与任务',onClick:()=>{if(jobsOpen)clearSummary();setJobsOpen(!jobsOpen)}},
-                h('span',{className:'pw-jobs-full'},'初读与任务'),h('span',{className:'pw-jobs-short'},'任务'),
+              h('button',{type:'button',className:'pw-button',title:t('jobs.title'),'aria-label':t('jobs.title'),onClick:()=>{if(jobsOpen)clearSummary();setJobsOpen(!jobsOpen)}},
+                h('span',{className:'pw-jobs-full'},t('jobs.title')),h('span',{className:'pw-jobs-short'},t('jobs.short')),
                 agentJobs.filter(j=>['queued','running'].includes(j.state)).length?' · '+agentJobs.filter(j=>['queued','running'].includes(j.state)).length:''),
               h(
                 'button',
@@ -1850,22 +1984,25 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
           ),
           notice ? h('div', { className: 'pw-notice', role: 'alert' }, notice) : null,
           jobsOpen ? h('div',{style:{padding:'10px 16px',maxHeight:'240px',overflow:'auto',borderBottom:'1px solid var(--dsw-alias-border-l1)',fontSize:'14px'}},
-            h('p',null,autoReadEnabled ? '新导入论文使用 DSH 当前默认模型进行自动初读。' : '自动初读已关闭。'),
+            h('p',null,autoReadEnabled ? t('jobs.autoReadOn') : t('jobs.autoReadOff')),
             agentJobs.length?agentJobs.map(job=>h('div',{key:job.id,style:{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap',padding:'6px 0'}},
               h('span',{style:{flex:'1 1 200px'}},job.title),
-              h('span',null,job.kind==='initial'?'自动初读 · ':'委派阅读 · ',({queued:'排队 / 索引中',running:'读取中',completed:'摘要已保存',failed:'需要处理',cancelled:'已取消'})[job.state]||job.state,job.kind==='initial'?` · ${job.pageIndex}/${job.pageCount} 页`:''),
+              h('span',null,job.kind==='initial'?t('jobs.initial'):t('jobs.research'),t(`jobs.state.${job.state}`)||job.state,job.kind==='initial'&&job.pageCount>0?` · ${job.pageIndex}/${job.pageCount} 页`:''),
               job.error?h('span',{role:'status',style:{flexBasis:'100%'}},job.error):null,
-              h('button',{className:'pw-button',onClick:()=>{setAiScope('paper');setAiOpen(true);void openView({view:'reader',attachmentId:job.attachmentId})}},'打开论文'),
-              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void showSummary('task-summary',{id:job.id},job.attachmentId,job.title)},'查看摘要'):null,
-              ['queued','running'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('cancel',{id:job.id}).catch(e=>showNotice(e.message))},'取消'):null,
-              ['failed','cancelled'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('retry',{id:job.id}).catch(e=>showNotice(e.message))},'重试'):null,
-            )):h('p',null,autoReadEnabled ? '暂无初读任务。导入新论文后会自动开始。' : '暂无初读任务。'),
-            summaryPreview?h('div',{style:{paddingTop:'8px'}},
-              h('strong',null,`《${summaryPreview.title}》 · ${summaryPreview.version ? `共享摘要 · 第 ${summaryPreview.version} 版` : '尚无共享摘要'}${summaryPreview.stale?' · 已过期':''}${summaryPreview.version?' · AI 生成，待核验':''}`),
-              ...Object.entries({topic:'文章主题',scientificQuestion:'科学问题',methods:'科学方法',argument:'行文逻辑',findings:'主要发现',limitations:'局限',openQuestions:'待核查'}).map(([key,label])=>h('p',{key},h('strong',null,label+'：'),summaryPreview.summary?.[key]||'尚无摘要')),
-              h('p',null,'来源页：',(summaryPreview.summary?.evidencePages||[]).map(p=>p+1).join('、'),'；已提取文本覆盖 ',summaryPreview.summary?.coverage?.readPages||0,' 页。'),
-              h('p',null,'图表和公式的视觉细节仍需核查。',summaryPreview.summary?.coverage?.gaps?.length?`未识别页：${summaryPreview.summary.coverage.gaps.map(p=>p+1).join('、')}`:''),
-              h('button',{className:'pw-button',onClick:clearSummary},'收起摘要')):null,
+              h('button',{className:'pw-button',onClick:()=>{setJobsOpen(false);setAiScope('paper');setAiOpen(true);void openView({view:'reader',attachmentId:job.attachmentId})}},t('jobs.openPaper')),
+              job.state==='completed'?h('button',{className:'pw-button',onClick:()=>void showSummary('task-summary',{id:job.id},job.attachmentId,job.title)},t('jobs.viewSummary')):null,
+              ['queued','running'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('cancel',{id:job.id}).catch(e=>showNotice(e.message))},t('jobs.cancel')):null,
+              ['failed','cancelled'].includes(job.state)?h('button',{className:'pw-button',onClick:()=>void taskAction('retry',{id:job.id}).catch(e=>showNotice(e.message))},t('jobs.retry')):null,
+            )):h('p',null,autoReadEnabled ? t('jobs.emptyOn') : t('jobs.emptyOff')),
+          ):null,
+          summaryPreview ? h('section',{className:'pw-summary-sheet','aria-label':t('summary.title')},
+            h('div',{className:'pw-summary-sheet-head'},
+              h('strong',null,`《${summaryPreview.title}》 · ${summaryPreview.version ? format(t('summary.version'), { version: summaryPreview.version }) : t('summary.none')}${summaryPreview.stale?t('summary.stale'):''}${summaryPreview.version?t('summary.unverified'):''}`),
+              h('button',{type:'button',className:'pw-button',onClick:clearSummary},t('summary.close')),
+            ),
+            ...['topic','scientificQuestion','methods','argument','findings','limitations','openQuestions'].map((key)=>h('p',{key},h('strong',null,t(`summary.field.${key}`)+'：'),summaryPreview.summary?.[key]||t('summary.emptyField'))),
+            h('p',null,format(t('summary.sources'), { pages: (summaryPreview.summary?.evidencePages||[]).map(p=>p+1).join('、') || '—', read: summaryPreview.summary?.coverage?.readPages||0 })),
+            h('p',null,t('summary.visualNote'),summaryPreview.summary?.coverage?.gaps?.length?' '+format(t('summary.gaps'), { pages: summaryPreview.summary.coverage.gaps.map(p=>p+1).join('、') }):''),
           ):null,
           h(
             'div',
@@ -1886,75 +2023,89 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                   })
                 : null,
               !backendReady
-                ? h(
-                    'div',
-                    { className: 'pw-splash' },
-                    phase === 'ready'
-                      ? h('span', { className: 'pw-spinner', 'aria-hidden': 'true' })
-                      : h(PaperIcon, { size: 34, active: true }),
-                    h('h2', null, phase === 'ready' ? t('boot.waiting') : t('boot.failedTitle')),
-                    phase === 'ready' ? null : h('p', null, t('boot.failedBody')),
-                    h(
+                ? (() => {
+                    const booting = !statusError && (phase === 'starting' || phase === 'idle')
+                    const bootProgress = status?.storage?.progress?.phase === 'copying'
+                      ? format(t('boot.storageCopying'), { copied: status.storage.progress.copiedFiles, total: status.storage.progress.totalFiles })
+                      : status?.runtimeProgress?.phase === 'copying'
+                        ? format(t('boot.runtimeCopying'), { completed: status.runtimeProgress.completed, total: status.runtimeProgress.total })
+                        : status?.runtimeProgress?.phase === 'checking'
+                          ? t('boot.runtimeChecking')
+                          : null
+                    return h(
                       'div',
-                      { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' } },
+                      { className: 'pw-splash' },
+                      booting
+                        ? h('span', { className: 'pw-spinner', 'aria-hidden': 'true' })
+                        : h(PaperIcon, { size: 34, active: true }),
+                      h('h2', null, booting ? t('boot.waiting') : t('boot.failedTitle')),
+                      booting
+                        ? (bootProgress ? h('p', { role: 'status' }, bootProgress) : null)
+                        : h('p', null, t('boot.failedBody')),
                       h(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'pw-button',
-                          'data-variant': 'primary',
-                          disabled: restarting,
-                          onClick: () => void restartBackend(),
-                        },
-                        restarting ? t('status.restarting') : t('status.restart'),
+                        'div',
+                        { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' } },
+                        !booting
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'pw-button',
+                                'data-variant': 'primary',
+                                disabled: restarting,
+                                onClick: () => void restartBackend(),
+                              },
+                              restarting ? t('status.restarting') : t('status.restart'),
+                            )
+                          : null,
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'pw-button',
+                            onClick: () => setShowDiagnostics((value) => !value),
+                          },
+                          showDiagnostics ? t('status.hide') : t('status.detail'),
+                        ),
                       ),
-                      h(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'pw-button',
-                          onClick: () => setShowDiagnostics((value) => !value),
-                        },
-                        showDiagnostics ? t('status.hide') : t('status.detail'),
-                      ),
-                    ),
-                    showDiagnostics
-                      ? h(
-                          'div',
-                          { className: 'pw-diagnostics' },
-                          h(
+                      showDiagnostics
+                        ? h(
                             'div',
-                            { className: 'pw-diag-row' },
-                            h('span', { className: 'pw-diag-label' }, t('status.dataRoot')),
-                            h('code', null, (status && status.dataRoot) || '-'),
-                          ),
-                          h(
-                            'div',
-                            { className: 'pw-diag-row' },
-                            h('span', { className: 'pw-diag-label' }, t('status.backendRoot')),
-                            h('code', null, (status && status.backendRoot) || '-'),
-                          ),
-                          h(
-                            'div',
-                            { className: 'pw-diag-row' },
-                            h('span', { className: 'pw-diag-label' }, t('status.node')),
-                            h('code', null, status && status.node ? `${status.node.version || '?'} · ${status.node.executable || ''}` : '-'),
-                          ),
-                          status && (status.error || statusError)
-                            ? h('div', { className: 'pw-diag-row' }, h('span', { className: 'pw-diag-label' }, 'error'), h('code', null, status.error || statusError))
-                            : null,
-                          h('pre', { className: 'pw-logs' }, (status && Array.isArray(status.logs) ? status.logs.slice(-24).join('\n') : '')),
-                        )
-                      : null,
-                  )
+                            { className: 'pw-diagnostics' },
+                            h(
+                              'div',
+                              { className: 'pw-diag-row' },
+                              h('span', { className: 'pw-diag-label' }, t('status.dataRoot')),
+                              h('code', null, (status && status.dataRoot) || '-'),
+                            ),
+                            h(
+                              'div',
+                              { className: 'pw-diag-row' },
+                              h('span', { className: 'pw-diag-label' }, t('status.backendRoot')),
+                              h('code', null, (status && status.backendRoot) || '-'),
+                            ),
+                            h(
+                              'div',
+                              { className: 'pw-diag-row' },
+                              h('span', { className: 'pw-diag-label' }, t('status.node')),
+                              h('code', null, status && status.node ? `${status.node.version || '?'} · ${status.node.executable || ''}` : '-'),
+                            ),
+                            status && (status.error || statusError)
+                              ? h('div', { className: 'pw-diag-row' }, h('span', { className: 'pw-diag-label' }, 'error'), h('code', null, status.error || statusError))
+                              : null,
+                            h('pre', { className: 'pw-logs' }, (status && Array.isArray(status.logs) ? status.logs.slice(-24).join('\n') : '')),
+                          )
+                        : null,
+                    )
+                  })()
                 : null,
             ),
             aiOpen && !stacked ? h('div', {
               className: 'pw-resizer', role: 'separator', tabIndex: 0,
-              'aria-label': '调整 AI 侧栏宽度', 'aria-orientation': 'vertical',
+              'aria-label': t('ai.resizerLabel'), 'aria-orientation': 'vertical',
               'aria-valuemin': 300, 'aria-valuemax': maxAiWidth, 'aria-valuenow': panelWidth,
               'aria-controls': 'pw-ai-panel', 'data-dragging': String(resizing),
-              title: '拖动调整宽度；方向键微调；双击恢复默认',
+              title: t('ai.resizerTitle'),
               onPointerDown: (event) => {
                 if (event.button !== 0) return
                 event.preventDefault()
@@ -1987,26 +2138,27 @@ html[data-pw-focus][data-windows-titlebar] .pw-header button, html[data-pw-focus
                 h(
                   'div',
                   { className: 'pw-panel-title-row' },
-                  h('button',{className:'pw-button','data-variant':aiScope==='master'?'primary':'quiet',onClick:()=>setAiScope('master')},'文献库助手'),
-                  h('button',{className:'pw-button',disabled:!paper,'data-variant':aiScope==='paper'?'primary':'quiet',onClick:()=>setAiScope('paper')},'本篇论文'),
+                  h('button',{className:'pw-button','data-variant':aiScope==='master'?'primary':'quiet',onClick:()=>setAiScope('master')},t('ai.masterScope')),
+                  h('button',{className:'pw-button',disabled:!paper,'data-variant':aiScope==='paper'?'primary':'quiet',onClick:()=>setAiScope('paper')},t('ai.paperScope')),
                   h(
                     'button',
                     {
                       type: 'button',
                       className: 'pw-button',
                       'data-variant': 'quiet',
+                      style: { marginLeft: 'auto' },
                       onClick: () => setAiOpen(false),
                       title: t('ai.close'),
                     },
                     '×',
                   ),
                 ),
-                h('div',{className:'pw-chip-row pw-topic-row'},
-                  h('span',{className:'pw-chip',title:paperTitle},aiScope==='master'?'管理文献与共享摘要':paperTitle||'本篇论文'),
-                  h('select',{className:'pw-input','aria-label':'会话话题',value:session?.sessionId||'',disabled:sessionBusy,onChange:e=>void switchTopic(e.target.value)},
-                    ...topics.map(topic=>h('option',{key:topic.session_id,value:topic.session_id},`${topic.binding_key.includes(':topic:')?'话题':'初始会话'} · ${new Date(topic.created_at).toLocaleString()}`))),
-                  h('button',{className:'pw-button',disabled:sessionBusy||!session,onClick:()=>void switchTopic()},'新话题'),
-                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void showSummary('digest',{attachmentId:paper.attachmentId},paper.attachmentId,paperTitle)},'共享摘要'):null,
+                h('div',{className:'pw-chip-row pw-topic-row','data-scope':aiScope},
+                  h('span',{className:'pw-chip',title:aiScope==='master'?t('ai.masterDesc'):(paperTitle||t('ai.paperScope'))},aiScope==='master'?t('ai.masterDesc'):paperTitle||t('ai.paperScope')),
+                  h('select',{className:'pw-input','aria-label':t('ai.topicLabel'),value:session?.sessionId||'',disabled:sessionBusy,onChange:e=>void switchTopic(e.target.value)},
+                    ...topics.map(topic=>h('option',{key:topic.session_id,value:topic.session_id},`${topic.binding_key.includes(':topic:')?t('ai.topicItem'):t('ai.topicInitial')} · ${new Date(topic.created_at).toLocaleString()}`))),
+                  h('button',{className:'pw-button',disabled:sessionBusy||!session,onClick:()=>void switchTopic()},t('ai.newTopic')),
+                  aiScope==='paper'&&paper?h('button',{className:'pw-button',onClick:()=>void showSummary('digest',{attachmentId:paper.attachmentId},paper.attachmentId,paperTitle)},t('summary.title')):null,
                 ),
                 aiScope==='paper' && paper
                   ? h(

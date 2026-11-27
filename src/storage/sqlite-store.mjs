@@ -16,10 +16,11 @@ import { AgentRepository } from "./agent-repository.mjs";
 
 const documentRows = `SELECT a.id, a.item_id AS itemId, a.sample_key AS sampleKey,
   a.original_name AS originalName, a.sha256 AS sourceHash, a.page_count AS pages,
-  a.byte_length AS bytes, json_extract(i.csl_json,'$.title') AS title, d.revision,
+  a.byte_length AS bytes, json_extract(i.csl_json,'$.title') AS title, m.archived_at AS archivedAt, d.revision,
   (SELECT count(*) FROM annotations n WHERE n.attachment_id=a.id) AS annotationCount
   FROM attachments a
   JOIN library_items i ON i.id=a.item_id
+  LEFT JOIN item_metadata m ON m.item_id=a.item_id
   JOIN annotation_documents d ON d.attachment_id=a.id`;
 
 export class SqliteStore {

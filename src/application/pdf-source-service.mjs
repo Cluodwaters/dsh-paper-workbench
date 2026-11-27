@@ -62,7 +62,7 @@ export class PdfSourceService {
           new AppError(
             password ? "PASSWORD_REQUIRED" : "PDF_INVALID",
             password
-              ? "此 PDF 需要密码。第一阶段尚未接入密码解锁与加密导出流程。"
+              ? "此 PDF 需要密码，当前暂不支持打开或导出加密 PDF。"
               : message.error.message,
             422,
           ),

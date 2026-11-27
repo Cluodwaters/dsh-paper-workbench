@@ -511,8 +511,18 @@ function bind() {
       editor.save();
     }
   });
+  let lastFocusRefresh = 0;
   window.addEventListener("focus", () => {
-    if (info) refresh();
+    if (!info || Date.now() - lastFocusRefresh < 1500) return;
+    if (
+      editor?.saving ||
+      editor?.isDirty() ||
+      document.querySelector("dialog[open]") ||
+      document.activeElement?.closest("#facets")
+    )
+      return;
+    lastFocusRefresh = Date.now();
+    refresh();
   });
 }
 try {

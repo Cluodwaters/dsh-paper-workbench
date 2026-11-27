@@ -23,17 +23,45 @@ export class PaperAgentService {
         "SELECT * FROM text_jobs WHERE attachment_id=? AND source_hash=? ORDER BY created_at DESC,id DESC LIMIT 1",
       )
       .get(a.id, a.sourceHash);
-    if (last && ["failed", "cancelled"].includes(last.status))
+    if (last && ["queued", "running"].includes(last.status))
+      return {
+        ready: false,
+        waiting: this.indexer?.paused
+          ? "全文索引已暂停，请在工具页继续任务。"
+          : "正在提取全文与 OCR",
+      };
+    const needsIndex = index?.pageCount !== a.pages;
+    const needsOcr =
+      !needsIndex && index.thinPages > 0 && (!last || last.mode === "text");
+    const ocrBlocked =
+      !needsIndex &&
+      index.thinPages > 0 &&
+      last?.mode === "ocr" &&
+      ["failed", "cancelled"].includes(last.status);
+    if (
+      (needsIndex && last && ["failed", "cancelled"].includes(last.status)) ||
+      ocrBlocked
+    )
       return {
         ready: false,
         error: `全文索引${last.status === "failed" ? "失败" : "已取消"}：${last.error || "请在工具页重试"}`,
       };
-    if (last && ["queued", "running"].includes(last.status))
-      return { ready: false, waiting: "正在提取全文与 OCR" };
-    if (index?.pageCount !== a.pages || (index.thinPages > 0 && (!last || last.mode === "text"))) {
+    if (needsIndex || needsOcr) {
       this.indexer.enqueue([a.id], "ocr");
-      return { ready: false, waiting: "正在提取全文与 OCR" };
+      return {
+        ready: false,
+        waiting: this.indexer?.paused
+          ? "全文索引已暂停，请在工具页继续任务。"
+          : "正在提取全文与 OCR",
+      };
     }
+    const blankPages = this.store.fulltext.emptyPageIndices(a.id, a.sourceHash);
+    if (a.pages > 0 && blankPages.length >= a.pages)
+      return {
+        ready: false,
+        error:
+          "此 PDF 所有页面均未提取出可读文字（含本地 OCR），无法自动生成文本摘要，请直接手动阅读或检查扫描质量。",
+      };
     return { ready: true, pageCount: a.pages };
   }
   async next(id, token) {

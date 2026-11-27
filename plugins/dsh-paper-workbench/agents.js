@@ -95,6 +95,24 @@ export function createAgentCoordinator(
     ctx.logger?.warn?.(
       `paper-workbench agents: ${String(error?.message || error).slice(0, 1000)}`,
     );
+  const touch = (id) => {
+    const entry = handles.get(id);
+    if (entry) entry.touched = Date.now();
+  };
+  const rememberBinding = (binding) => {
+    if (!binding?.session_id) return null;
+    bindings.delete(binding.session_id);
+    bindings.set(binding.session_id, binding);
+    while (bindings.size > 512) bindings.delete(bindings.keys().next().value);
+    return binding;
+  };
+  async function resolveBinding(sessionId) {
+    if (typeof sessionId !== "string" || !sessionId) return null;
+    const cached = bindings.get(sessionId);
+    if (cached) return cached;
+    const found = await call("binding-session", { sessionId });
+    return rememberBinding(found);
+  }
   const scopedAttachment = (binding, id) => {
     if (id && id !== binding.attachment_id)
       throw Error("SESSION_SCOPE: 此会话只能访问绑定论文。");
@@ -427,11 +445,14 @@ export function createAgentCoordinator(
         typeof agent.session?.header?.cwd === "string" &&
         path.resolve(agent.session.header.cwd).toLowerCase() ===
           path.resolve(conversationsRoot).toLowerCase();
-      if (!owned) return;
-      binding = await call("binding-session", { sessionId: agent.id });
-      if (binding) bindings.set(agent.id, binding);
+      if (typeof agent.id === "string" && agent.id.length > 0) {
+        binding = owned
+          ? await call("binding-session", { sessionId: agent.id })
+          : await call("binding-session", { sessionId: agent.id }).catch(() => null);
+        if (binding) rememberBinding(binding);
+      }
       if (!binding) {
-        agent.ctx.tools.restrict({ allow: [] });
+        if (owned) agent.ctx.tools.restrict({ allow: [] });
         return;
       }
     }
@@ -478,6 +499,7 @@ export function createAgentCoordinator(
     });
     agent.ctx.on("session/event", (session, event) => {
       if (session.id !== agent.id) return;
+      touch(agent.id);
       if (event.type === "turn/end" && event.data.reason?.kind === "aborted")
         state.cancelled = true;
       if (binding.role !== "paper" || stopped) return;
@@ -510,12 +532,13 @@ export function createAgentCoordinator(
     if (stopped) throw Error("文献工作台正在关闭。");
     if (!binding) throw Error("文献会话绑定不存在。");
     if (opening.has(binding.session_id)) return opening.get(binding.session_id);
-    bindings.set(binding.session_id, binding);
+    rememberBinding(binding);
     const operation = (async () => {
       const agents = service("agents");
       if (!agents) throw Error("DSH Agent 服务尚未就绪。");
       const live = agents.get(binding.session_id);
       if (live) {
+        touch(binding.session_id);
         await attach(live);
         return live;
       }
@@ -596,7 +619,12 @@ export function createAgentCoordinator(
     return binding;
   }
   async function beforeStep(agent, step, signal, decision) {
-    if (!bindings.has(agent.id) || decision?.kind !== "enter") return decision;
+    if (decision?.kind !== "enter") return decision;
+    const binding =
+      bindings.get(agent.id) ||
+      (await resolveBinding(agent.id).catch(() => null));
+    if (!binding) return decision;
+    touch(agent.id);
     const state = sessionState.get(agent);
     if (step === 1 || decision.startsRequestSeries) {
       if (state) {
@@ -605,7 +633,7 @@ export function createAgentCoordinator(
         state.cancelled = false;
       }
       if (
-        bindings.get(agent.id).role === "paper" &&
+        binding.role === "paper" &&
         ![...active.values()].some((r) => r.job.session_id === agent.id)
       )
         await call("mark-turn", {
@@ -621,7 +649,7 @@ export function createAgentCoordinator(
       service("agentPresets")?.serviceFor(agent, name) || agent.ctx.get(name);
     const meter = presetService("tokenMeter"),
       compaction = presetService("compaction");
-    const cap = bindings.get(agent.id).role === "master" ? 24000 : 48000;
+    const cap = binding.role === "master" ? 24000 : 48000;
     if (meter && meter.measure(agent.session).totalTokens > cap) {
       if (typeof compaction?.compactIfNeeded !== "function")
         throw Error(
@@ -668,7 +696,11 @@ export function createAgentCoordinator(
         const current = await call("job", { id: job.id });
         if (current.state !== "running" || current.lease_token !== job.lease_token) break;
         if (Date.now() - started > 30 * 60 * 1000 || turns >= 3)
-          throw Error("本次初读达到运行预算，已保存检查点，可点击重试继续。");
+          throw Error(
+            current.kind === "initial"
+              ? "本次初读达到运行预算，已保存检查点，可点击重试继续。"
+              : "本次委派任务达到运行预算，已保存进度，可点击重试继续。",
+          );
         const progress = JSON.stringify([
           current.progress.pageIndex || 0,
           current.progress.offset || 0,
@@ -790,14 +822,15 @@ export function createAgentCoordinator(
       if (stopped) return;
       for (const [id, entry] of handles) {
         if (handles.size <= 8) break;
+        const bound = bindings.get(id);
         if (
           Date.now() - entry.touched > 600000 &&
           entry.handle.agent.status !== "running" &&
+          !summaryWork.has(bound?.attachment_id) &&
           ![...active.values()].some((r) => r.job.session_id === id)
         ) {
           await entry.handle.dispose();
           handles.delete(id);
-          bindings.delete(id);
         }
       }
     } catch (error) {
@@ -817,6 +850,8 @@ export function createAgentCoordinator(
     attach,
     beforeStep,
     ensure,
+    touch,
+    resolveBinding,
     binding: (id) => bindings.get(id),
     call,
     async route(action, input) {

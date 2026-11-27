@@ -70,6 +70,8 @@ async function openDocument(id) {
       `${doc.attachment.pages} 页 · 标注独立保存，导出生成新 PDF`;
     renderList();
     await adapter.open(doc);
+    if (doc.attachment.archivedAt)
+      notice("此论文目前在回收站中，AI 辅助暂不可用；如需继续整理，请先在文献库回收站恢复。");
     for (const key of ["save", "export-json", "export-pdf", "page-text-button"])
       $(key).disabled = false;
     renderList();
@@ -120,11 +122,20 @@ $("export-json").addEventListener("click", async () => {
     // JSON is also a recovery copy when the database is unavailable.
     const snapshot = adapter.snapshot();
     snapshot.saveState = adapter.getSaveState();
+    const baseName = (
+      adapter.document.attachment.originalName ||
+      adapter.document.attachment.sampleKey ||
+      adapter.document.attachment.id
+    )
+      .replace(/\.pdf$/i, "")
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+      .trim()
+      .slice(0, 80);
     downloadBlob(
       new Blob([JSON.stringify(snapshot, null, 2)], {
         type: "application/json",
       }),
-      adapter.document.attachment.sampleKey + "-annotations.json",
+      (baseName || "paper") + "-annotations.json",
     );
     if (snapshot.saveState !== "saved")
       notice(
@@ -193,21 +204,8 @@ window.addEventListener("beforeunload", (event) => {
     event.returnValue = "";
   }
 });
-documents = await api("/api/documents");
-$("document-count").textContent = documents.length + " 份";
-renderList();
-status("saved", "请选择一篇测试副本");
-window.workbench = { openDocument, documents };
 const initialId = new URLSearchParams(location.search).get("id");
-if (initialId) {
-  document.body.classList.add("direct-reader");
-  if (documents.some((doc) => doc.id === initialId)) {
-    await openDocument(initialId);
-    const page = new URLSearchParams(location.search).get("page");
-    if (page !== null && adapter?.pdfApplication)
-      await adapter.goToPage(Number(page));
-  } else notice("没有找到这个 PDF 附件，请返回文献库重新打开。");
-}
+window.workbench = { openDocument, documents };
 for (const button of document.querySelectorAll("[data-ai-action]")) {
   button.addEventListener("mousedown", (event) => event.preventDefault());
   button.addEventListener("click", () => {
@@ -215,27 +213,50 @@ for (const button of document.querySelectorAll("[data-ai-action]")) {
     requestAi(button.dataset.aiAction, adapter.context());
   });
 }
-connectHarness("reader", {
-  async flush() {
-    if (opening) throw new Error("论文仍在打开，请稍后再切换。");
-    await adapter?.flush();
-  },
-  context() {
-    return adapter?.pdfApplication ? adapter.context() : null;
-  },
-  async navigate(payload) {
-    const page = payload?.pageIndex;
-    if (
-      !adapter?.pdfApplication ||
-      !Number.isInteger(page) ||
-      page < 0 ||
-      page >= adapter.document.attachment.pages
-    )
-      throw new Error("页码无效或论文尚未打开。");
-    await adapter.goToPage(page);
-    return adapter.context();
-  },
-  theme(theme) {
-    adapter?.setTheme(theme);
-  },
-});
+try {
+  if (initialId) {
+    document.body.classList.add("direct-reader");
+    await openDocument(initialId);
+    const page = new URLSearchParams(location.search).get("page");
+    if (page !== null && adapter?.pdfApplication)
+      await adapter.goToPage(Number(page));
+  } else {
+    documents = await api("/api/documents");
+    $("document-count").textContent = documents.length + " 份";
+    renderList();
+    status("saved", "请选择一篇论文");
+    window.workbench = { openDocument, documents };
+  }
+} catch (error) {
+  status("failed", error.message);
+  notice(
+    error.code === "NOT_FOUND"
+      ? "没有找到这个 PDF 附件，请返回文献库重新打开。"
+      : error.message,
+  );
+} finally {
+  connectHarness("reader", {
+    async flush() {
+      if (opening) throw new Error("论文仍在打开，请稍后再切换。");
+      await adapter?.flush();
+    },
+    context() {
+      return adapter?.pdfApplication ? adapter.context() : null;
+    },
+    async navigate(payload) {
+      const page = payload?.pageIndex;
+      if (
+        !adapter?.pdfApplication ||
+        !Number.isInteger(page) ||
+        page < 0 ||
+        page >= adapter.document.attachment.pages
+      )
+        throw new Error("页码无效或论文尚未打开。");
+      await adapter.goToPage(page);
+      return adapter.context();
+    },
+    theme(theme) {
+      adapter?.setTheme(theme);
+    },
+  });
+}

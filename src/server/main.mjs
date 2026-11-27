@@ -332,6 +332,7 @@ async function stop() {
   stopping = true;
   clearInterval(parentWatcher);
   await indexer.close();
+  server.closeIdleConnections?.();
   server.close(() => {
     store.close();
     process.exitCode = 0;

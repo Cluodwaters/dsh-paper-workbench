@@ -93,6 +93,18 @@ export function renderFilters(result, state) {
   const open = [...$("facets").querySelectorAll("details[open]")].map(
     (el) => el.querySelector("summary")?.textContent?.split("全部")[0],
   );
+  const facetSearches = new Map(
+    [...$("facets").querySelectorAll("[data-facet-search]")].map((el) => [
+      el.dataset.facetSearch,
+      el.value,
+    ]),
+  );
+  const facetScrolls = new Map(
+    [...$("facets").querySelectorAll("[data-facet-options]")].map((el) => [
+      el.dataset.facetOptions,
+      el.scrollTop,
+    ]),
+  );
   $("facets").innerHTML =
     options("authors", "作者", "填写作者信息后，即可按姓名筛选。") +
     options("journals", "期刊", "填写期刊或会议名称后，即可按来源筛选。") +
@@ -114,7 +126,7 @@ export function renderFilters(result, state) {
           `<label><input type="checkbox" data-dimension="reviewStatuses" value="${key}" ${query.reviewStatuses.includes(key) ? "checked" : ""}><span>${label}</span></label>`,
       )
       .join("")}</div></details>`;
-  // Keep a user's expanded facet open when results refresh.
+  // Keep a user's expanded facet open, search text and scroll position intact when results refresh.
   $("facets")
     .querySelectorAll("details")
     .forEach((el) => {
@@ -127,6 +139,22 @@ export function renderFilters(result, state) {
       )
         el.open = true;
     });
+  for (const [dimension, value] of facetSearches) {
+    if (!value) continue;
+    const input = $("facets").querySelector(`[data-facet-search="${dimension}"]`);
+    if (input) {
+      input.value = value;
+      const q = value.toLowerCase();
+      $("facets")
+        .querySelectorAll(`[data-facet-options="${dimension}"] [data-label]`)
+        .forEach((label) => (label.hidden = !label.dataset.label.includes(q)));
+    }
+  }
+  for (const [dimension, top] of facetScrolls) {
+    if (!top) continue;
+    const list = $("facets").querySelector(`[data-facet-options="${dimension}"]`);
+    if (list) list.scrollTop = top;
+  }
   const chips = [];
   if (query.text) chips.push({ kind: "text", label: "搜索：" + query.text });
   for (const dimension of ["authors", "journals", "tags"])

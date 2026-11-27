@@ -62,7 +62,7 @@ export function modal({
 }) {
   const dialog = document.createElement("dialog");
   dialog.className = "dialog" + (wide ? " wide" : "");
-  dialog.innerHTML = `<form novalidate><div class="dialog-head"><h2>${esc(title)}</h2><button type="button" class="icon-button" data-close aria-label="关闭对话框">×</button></div><div class="dialog-content">${content}</div><p class="form-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" data-close>取消</button>${confirm ? `<button type="submit" class="primary">${esc(confirm)}</button>` : '<button type="button" class="primary" data-close>完成</button>'}</div></form>`;
+  dialog.innerHTML = `<form novalidate><div class="dialog-head"><h2>${esc(title)}</h2><button type="button" class="icon-button" data-close aria-label="关闭对话框">×</button></div><div class="dialog-content">${content}</div><p class="form-error" role="alert" hidden></p><div class="dialog-actions">${confirm ? `<button type="button" data-close>取消</button><button type="submit" class="primary">${esc(confirm)}</button>` : '<button type="button" class="primary" data-close>完成</button>'}</div></form>`;
   document.body.append(dialog);
   const promise = new Promise((resolve) => {
     let value;

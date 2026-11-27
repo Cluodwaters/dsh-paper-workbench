@@ -5,7 +5,7 @@ import {
   cleanText,
   searchKey,
 } from "../domain/bibliography.mjs";
-import { textTokens, fulltextPhrase } from "../domain/fulltext.mjs";
+import { textTokens, fulltextPhrase, searchPieces } from "../domain/fulltext.mjs";
 import {
   INITIAL_READING,
   researchBriefing,
@@ -644,10 +644,14 @@ export class AgentRepository {
       );
       const validated = validateDigest(value, a.pages),
         coverage = this.coverage(a, job.session_id, previousDigest, reads);
+      const blankSet = new Set(coverage.value.gaps || []);
+      const invalidPages = validated.evidencePages.filter((p) => !coverage.evidence.has(p));
       requireValue(
-        validated.evidencePages.every((p) => coverage.evidence.has(p)),
+        invalidPages.length === 0,
         "DIGEST_EVIDENCE",
-        "摘要不能引用尚未读取的页面。",
+        invalidPages.some((p) => blankSet.has(p))
+          ? "摘要不能引用空白或未识别出文字的页面，请将其记录在局限或待核查项中。"
+          : "摘要不能引用尚未读取的页面。",
         409,
       );
       const digest = {
@@ -808,10 +812,14 @@ export class AgentRepository {
       );
       const validated = validateDigest(digest, a.pages),
         coverage = this.coverage(a, sessionId, previous);
+      const blankSet = new Set(coverage.value.gaps || []);
+      const invalidPages = validated.evidencePages.filter((p) => !coverage.evidence.has(p));
       requireValue(
-        validated.evidencePages.every((p) => coverage.evidence.has(p)),
+        invalidPages.length === 0,
         "DIGEST_EVIDENCE",
-        "摘要不能引用尚未读取的页面。",
+        invalidPages.some((p) => blankSet.has(p))
+          ? "摘要不能引用空白或未识别出文字的页面，请将其记录在局限或待核查项中。"
+          : "摘要不能引用尚未读取的页面。",
         409,
       );
       const payload = {
@@ -858,36 +866,42 @@ export class AgentRepository {
       "分页位置无效。",
     );
     const words = searchKey(text).split(/\s+/).filter(Boolean).slice(0, 12);
+    const fromSql =
+      "FROM item_metadata m LEFT JOIN journal_aliases ja ON ja.alias_key=m.journal_key LEFT JOIN journal_terms jt ON jt.term_key=COALESCE(ja.canonical_key,m.journal_key)";
     const allowedText =
-      "m.title || ' ' || COALESCE(m.year,'') || ' ' || m.journal_key || ' ' || m.doi || ' ' || COALESCE((SELECT group_concat(label,' ') FROM item_authors WHERE item_id=m.item_id),'') || ' ' || COALESCE((SELECT group_concat(label,' ') FROM item_tags WHERE item_id=m.item_id),'')";
+      "m.title || ' ' || COALESCE(m.year,'') || ' ' || m.journal_key || ' ' || COALESCE(jt.label,'') || ' ' || m.doi || ' ' || COALESCE((SELECT group_concat(label,' ') FROM item_authors WHERE item_id=m.item_id),'') || ' ' || COALESCE((SELECT group_concat(label,' ') FROM item_tags WHERE item_id=m.item_id),'')";
     const where =
       "m.archived_at IS NULL" +
       words.map(() => ` AND instr(pw_search(${allowedText}),?)>0`).join("");
     const total = this.db
-      .prepare(`SELECT count(*) AS n FROM item_metadata m WHERE ${where}`)
+      .prepare(`SELECT count(*) AS n ${fromSql} WHERE ${where}`)
       .get(...words).n;
     const catalog = {
       total,
       items: this.db
         .prepare(
-          `SELECT m.item_id AS id FROM item_metadata m WHERE ${where} ORDER BY m.updated_at DESC,m.item_id LIMIT 20 OFFSET ?`,
+          `SELECT m.item_id AS id ${fromSql} WHERE ${where} ORDER BY m.updated_at DESC,m.item_id LIMIT 20 OFFSET ?`,
         )
         .all(...words, offset),
     };
-    const phrase = fulltextPhrase(text),
-      hits = phrase
-        ? this.db
-            .prepare(
-              `SELECT DISTINCT d.attachment_id FROM paper_digest_fts f JOIN paper_digests d ON d.id=f.digest_id JOIN attachments a ON a.id=d.attachment_id JOIN item_metadata m ON m.item_id=a.item_id WHERE paper_digest_fts MATCH ? AND m.archived_at IS NULL AND d.source_hash=a.sha256 AND d.version=(SELECT MAX(x.version) FROM paper_digests x WHERE x.attachment_id=d.attachment_id) ORDER BY bm25(paper_digest_fts) LIMIT 8`,
-            )
-            .all(phrase)
-        : [];
+    const ftsQuery = searchPieces(text)
+      .slice(0, 12)
+      .map(fulltextPhrase)
+      .filter(Boolean)
+      .join(" AND ");
+    const hits = ftsQuery
+      ? this.db
+          .prepare(
+            `SELECT DISTINCT d.attachment_id FROM paper_digest_fts f JOIN paper_digests d ON d.id=f.digest_id JOIN attachments a ON a.id=d.attachment_id JOIN item_metadata m ON m.item_id=a.item_id WHERE paper_digest_fts MATCH ? AND m.archived_at IS NULL AND d.source_hash=a.sha256 AND d.version=(SELECT MAX(x.version) FROM paper_digests x WHERE x.attachment_id=d.attachment_id) ORDER BY bm25(paper_digest_fts) LIMIT 8`,
+          )
+          .all(ftsQuery)
+      : [];
     const ids = [
       ...new Set([
         ...catalog.items.map((x) => x.id),
         ...hits.map((x) => this.store.attachment(x.attachment_id).itemId),
       ]),
-    ].slice(0, 20);
+    ];
     return {
       totalMetadataMatches: catalog.total,
       offset,

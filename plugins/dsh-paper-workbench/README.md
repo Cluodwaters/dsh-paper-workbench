@@ -1,6 +1,6 @@
 # 文献工作台 · DeepSeek Harness 插件
 
-**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)** · 适配 DSH **0.2.2-rc.1 至 rc.3**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
+**[下载 Windows x64 插件安装包](https://github.com/Cluodwaters/dsh-paper-workbench/releases/latest/download/dsh-paper-workbench-windows-x64.tgz)** · 适配 DSH **0.2.2-rc.1 及以上（`>=0.2.2-rc.1 <0.3.0`，已在 0.2.2-rc.3 实机验证并完成 0.2.2-rc.5 / 0.2.3-alpha.2 接口适配）**。在 DSH 插件页面安装下载的 `.tgz`，不要选择 `sources.tar.gz` 或 `Source code`。本发行包不支持直接安装到 macOS、Linux 或 Windows ARM。
 
 DSH 左侧的独立「文献工作台」入口提供文献库、PDF 阅读器和工具页；侧栏可切换「文献库助手」与「本篇论文」。采用 DSH 主题变量、中性与蓝色外观，搜索框相对文献库内容区水平居中。
 
@@ -90,7 +90,7 @@ dsh plugin --profile desktop add "https://github.com/Cluodwaters/dsh-paper-workb
 
 手动安装：点击上面的下载链接，在 DSH「插件 → 安装本地插件」中选择 `dsh-paper-workbench-windows-x64.tgz`。下载公开，无需登录 GitHub；本地文件来源不自动跟随线上发布。若提示「这个包没有声明组合包」，先核对是否误选了开发源码包；源码包改扩展名不能变成插件。
 
-Windows x64 安装包适配 DSH `0.2.2-rc.1` 至 `0.2.2-rc.3`。包内包含 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。
+Windows x64 安装包声明兼容 DSH `>=0.2.2-rc.1 <0.3.0`（已在 `0.2.2-rc.3` 实机验证，并适配 `0.2.2-rc.5` 与 `0.2.3-alpha.2` 的宿主鉴权接口）。包内包含 Node `25.8.1`、后台生产依赖、Reader、OCR 模型及许可证，后台独立于源码目录运行。
 
 以下命令仅用于开发者构建；前置依赖见仓库根目录 `BUILD.md`：
 

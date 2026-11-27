@@ -230,3 +230,93 @@ test("reader context uses the focused split pane and retains primary restoration
   assert.equal(context.readingPageIndex, 0);
   assert.equal(context.selection.text, "right");
 });
+
+test("reader context recognizes selections anchored directly on an Element node", () => {
+  const adapter = new ZoteroReaderAdapter(null, () => {}, () => {});
+  const textLayerElement = {
+    nodeType: 1,
+    closest: (selector) =>
+      selector === ".textLayer"
+        ? textLayerElement
+        : selector === ".page"
+          ? { dataset: { pageNumber: "2" } }
+          : null,
+  };
+  const pane = {
+    _iframeWindow: {
+      PDFViewerApplication: { pdfViewer: { currentPageNumber: 1 } },
+      getSelection: () => ({
+        anchorNode: textLayerElement,
+        toString: () => "Selected paragraph",
+      }),
+    },
+  };
+  adapter.document = { attachment: snapshot };
+  adapter.reader = { _primaryView: pane, _lastViewPrimary: true };
+  adapter.pdfApplication = pane._iframeWindow.PDFViewerApplication;
+  const context = adapter.context();
+  assert.equal(context.pageIndex, 1);
+  assert.equal(context.selection.text, "Selected paragraph");
+});
+
+test("saveViewState coalesces rapid scroll bursts and clears transient errors once a later write succeeds", async (t) => {
+  environment(t);
+  let calls = 0;
+  let releaseFirst;
+  globalThis.fetch = () => {
+    calls++;
+    if (calls === 1) {
+      return new Promise((resolve) => {
+        releaseFirst = () => resolve(errorResponse());
+      });
+    }
+    return Promise.resolve(Response.json({ saved: true }));
+  };
+  const adapter = new ZoteroReaderAdapter(null, () => {}, () => {});
+  adapter.document = { attachment: { id: "test" } };
+  const first = adapter.saveViewState({ pageIndex: 1 }, true);
+  adapter.saveViewState({ pageIndex: 2 }, true);
+  adapter.saveViewState({ pageIndex: 3 }, true);
+  adapter.saveViewState({ pageIndex: 4 }, true);
+  releaseFirst();
+  await first;
+  await until(() => !adapter.dirty());
+  assert.equal(calls, 2, "intermediate scroll updates coalesce into a single follow-up write");
+  assert.equal(adapter.stateError, null, "later successful save clears prior transient stateError");
+  assert.equal(adapter.getSaveState(), "saved");
+});
+
+test("mergeConflict rebases queued mutations across recovered and current draft keys", async (t) => {
+  environment(t);
+  const legacyKey = "paper-workbench:draft:v1:" + snapshot.attachmentId;
+  const oldMutation = {
+    expectedRevision: 0,
+    requestId: "legacy-req",
+    sourceHash: snapshot.sourceHash,
+    upserts: [{ id: "from-old-window" }],
+    deletions: [],
+  };
+  localStorage.setItem(
+    legacyKey,
+    JSON.stringify({ schemaVersion: 1, sourceHash: snapshot.sourceHash, queue: [{ mutation: oldMutation }] }),
+  );
+  const client = new PersistenceClient({ ...snapshot, revision: 2 }, () => {});
+  await client.recover();
+  globalThis.fetch = async () =>
+    Response.json({ error: { code: "REVISION_CONFLICT", message: "conflict" } }, { status: 409 });
+  await client.pump();
+  assert.equal(client.error.code, "REVISION_CONFLICT");
+  client.enqueue([{ id: "from-current-window" }], []);
+  const seen = [];
+  globalThis.fetch = async (_, options) => {
+    const body = JSON.parse(options.body);
+    seen.push(body.expectedRevision);
+    return Response.json({ revision: body.expectedRevision + 1 });
+  };
+  await client.mergeConflict({ ...snapshot, revision: 2 });
+  assert.deepEqual(seen, [2, 3]);
+  assert.equal(client.revision, 4);
+  assert.equal(localStorage.getItem(legacyKey), null);
+  assert.equal(localStorage.getItem(client.key), null);
+  client.release();
+});

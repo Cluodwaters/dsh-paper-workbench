@@ -126,7 +126,7 @@ export class MetadataEditor {
       }
     }
     this.otherDrafts = this.recoverableDrafts();
-    this.editing = editing || !item || this.dirty;
+    this.editing = !item?.archivedAt && (editing || !item || this.dirty);
     this.render();
   }
   clear() {
@@ -146,6 +146,7 @@ export class MetadataEditor {
       <div class="detail-tabs"><button type="button" data-action="overview" class="${!this.editing ? "active" : ""}" ${!item ? "disabled" : ""}>概览</button><button type="button" data-action="edit" class="${this.editing ? "active" : ""}" ${item?.archivedAt ? "disabled" : ""}>编辑</button>
       ${item ? `<button type="button" class="detail-trash-action" data-action="change-archive">${item.archivedAt ? "恢复到文献库" : "移入回收站"}</button>` : ""}</div>
       ${this.otherDrafts?.length ? `<div class="hint"><span>本机还保留了 ${this.otherDrafts.length} 份其他页签草稿。</span> <button type="button" class="text-button" data-action="recover-draft">查看与恢复</button></div>` : ""}
+      ${!this.editing && this.dirty && !item?.archivedAt ? '<div class="hint amber"><span>此文献有未保存的编辑草稿，切换页面前请先保存或重新载入。</span> <button type="button" class="text-button" data-action="edit">返回编辑</button></div>' : ""}
       ${this.editing ? this.form() : this.overview()}`;
   }
   overview() {
@@ -429,6 +430,10 @@ export class MetadataEditor {
         return;
       }
       const groups = candidateFields(this.draft, candidate.metadata);
+      if (!groups.length) {
+        toast("Crossref 未返回可补充的新字段。");
+        return;
+      }
       const display = (key, record) => {
         if (key === "authors")
           return (record.authors || []).map(authorLabel).join("；") || "—";

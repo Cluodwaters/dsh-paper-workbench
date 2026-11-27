@@ -193,8 +193,11 @@ export async function importFiles(
               body: file,
               signal: AbortSignal.timeout(150000),
             });
-            const body = await response.json();
-            if (!response.ok) throw new Error(body.error.message);
+            const body = await response.json().catch(() => null);
+            if (!response.ok)
+              throw new Error(
+                body?.error?.message || `导入失败（HTTP ${response.status}）`,
+              );
             if (body.duplicate) {
               duplicates++;
               if (body.item.archivedAt) archivedItem = body.item;

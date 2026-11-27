@@ -646,3 +646,73 @@ test("upgrading a v5 library excludes old empty-page evidence and preserves the 
     assert.equal(upgraded.db.prepare("SELECT payload_json FROM paper_digests").get().payload_json,payload);
   } finally { upgraded.close(); }
 });
+
+test("master catalog search matches non-adjacent multi-word digest terms, journal aliases and keeps summary hits", async (t) => {
+  const { store, service, id } = setup(t);
+  const item = store.library.get(store.attachment(id).itemId);
+  store.library.update(item.id, {
+    requestId: randomUUID(),
+    expectedRevision: item.revision,
+    metadata: { ...item.metadata, title: "Alpha Study", journal: "Phys. Rev. B" },
+  });
+  const aliases = store.library.aliases();
+  store.library.setAlias({
+    requestId: randomUUID(),
+    expectedRevision: aliases.revision,
+    alias: "Phys. Rev. B",
+    canonical: "Physical Review B",
+  });
+  const j = store.agents.claim(store.agents.pending()[0].id);
+  await readAll(service, j);
+  await service.publish(j.id, j.lease_token, {
+    digest: {
+      ...digest,
+      topic: "基于热导率测量的界面传热分析",
+      methods: "采用机器学习势函数进行分子动力学模拟",
+    },
+    sourceSeq: 20,
+  });
+  const multiWord = store.agents.search("热导率 机器学习");
+  assert.equal(multiWord.summaryMatches.length, 1);
+  assert.ok(multiWord.items.some((entry) => entry.itemId === item.id));
+  const byAlias = store.agents.search("Physical Review B");
+  assert.ok(byAlias.items.some((entry) => entry.itemId === item.id));
+  for (let i = 0; i < 22; i++) {
+    store.library.create({
+      requestId: randomUUID(),
+      metadata: { title: `热导率 机器学习 论文 ${i}` },
+    });
+  }
+  const crowded = store.agents.search("热导率 机器学习");
+  assert.equal(crowded.summaryMatches.length, 1);
+  assert.ok(
+    crowded.items.some((entry) => entry.itemId === item.id),
+    "summaryMatches entries must not be sliced off when metadata hits fill 20 slots",
+  );
+});
+
+test("prepare rejects all-blank PDFs cleanly, tolerates cancelled force-ocr on indexed PDFs, and notes paused indexing", (t) => {
+  const blank = setup(t, { pages: ["", "   "] });
+  const ocrJob = blank.store.fulltext.enqueue(blank.id, "ocr");
+  blank.store.fulltext.mark(ocrJob.id, "running");
+  blank.store.fulltext.savePage(ocrJob.id, { pageIndex: 0, nativeText: "", ocrText: "" });
+  blank.store.fulltext.savePage(ocrJob.id, { pageIndex: 1, nativeText: "", ocrText: "" });
+  blank.store.fulltext.finish(ocrJob.id, 2);
+  const [blankJob] = blank.store.agents.pending();
+  const blankPrep = blank.service.prepare(blankJob.id);
+  assert.equal(blankPrep.ready, false);
+  assert.match(blankPrep.error, /未提取出可读文字/);
+
+  const normal = setup(t, { pages: ["Sufficient native text for indexing page one. ".repeat(5)] });
+  const [normalJob] = normal.store.agents.pending();
+  const forceOcr = normal.store.fulltext.enqueue(normal.id, "force-ocr");
+  normal.store.fulltext.mark(forceOcr.id, "cancelled");
+  assert.equal(normal.service.prepare(normalJob.id).ready, true);
+
+  normal.service.indexer = { paused: true, enqueue() {} };
+  const queued = normal.store.fulltext.enqueue(normal.id, "ocr");
+  assert.equal(queued.status, "queued");
+  const pausedPrep = normal.service.prepare(normalJob.id);
+  assert.equal(pausedPrep.ready, false);
+  assert.match(pausedPrep.waiting, /已暂停/);
+});

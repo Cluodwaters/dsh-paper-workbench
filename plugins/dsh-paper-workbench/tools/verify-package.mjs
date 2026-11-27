@@ -47,7 +47,7 @@ const packageRoot = path.join(tempRoot, 'dsh-paper-workbench')
 const dataRoot = path.join(tempRoot, 'data')
 mkdirSync(tempRoot, { recursive: true })
 console.log(`Copying package to ${packageRoot}`)
-cpSync(distRoot, packageRoot, { recursive: true })
+cpSync(distRoot, packageRoot, { recursive: true, filter: () => true })
 mkdirSync(dataRoot, { recursive: true })
 
 function sha256(file) {

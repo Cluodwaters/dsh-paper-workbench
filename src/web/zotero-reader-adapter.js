@@ -35,6 +35,8 @@ export class ZoteroReaderAdapter {
     this.onNotice = onNotice;
     this.reader = null;
     this.stateWrites = new Set();
+    this.pendingViewStates = new Map();
+    this.viewStateDrain = null;
     this.stateError = null;
   }
   async open(document) {
@@ -49,7 +51,7 @@ export class ZoteroReaderAdapter {
     ];
     const [bytes, ftl] = await Promise.all([
       fetch(appUrl(`/api/pdf/${document.attachment.id}`)).then((response) => {
-        if (!response.ok) throw new Error("无法读取测试副本");
+        if (!response.ok) throw new Error("无法读取 PDF 文件");
         return response.arrayBuffer();
       }),
       loadReaderLocale(),
@@ -111,14 +113,13 @@ export class ZoteroReaderAdapter {
       },
       onConfirm: (_title, text) => window.confirm(text),
       onOpenTagsPopup: () =>
-        this.onNotice("本阶段验证阅读与持久化；标签编辑在文献库阶段接入。"),
+        this.onNotice("阅读器内暂不支持编辑批注标签，请在文献库中管理文献标签。"),
       onAddToNote: () =>
-        this.onNotice("可先导出标注 JSON；笔记编辑器在后续阶段接入。"),
+        this.onNotice("暂不支持添加到独立笔记，可在阅读工具中导出标注 JSON。"),
       onRotatePages: () =>
-        this.onNotice(
-          "本阶段不修改 PDF 页结构；旋转兼容性使用专门的测试副本验证。",
-        ),
-      onDeletePages: () => this.onNotice("本阶段不删除 PDF 页面。"),
+        this.onNotice("为保护原始 PDF 与批注坐标，暂不支持直接旋转页面。"),
+      onDeletePages: () =>
+        this.onNotice("为保护原始 PDF 与批注坐标，暂不支持删除页面。"),
       onToggleSidebar: () => {},
       onChangeSidebarWidth: () => {},
       onChangeSidebarView: () => {},
@@ -137,6 +138,8 @@ export class ZoteroReaderAdapter {
       throw new Error("阅读器内部保存接口已变化，需重新验证适配器。");
     // Avoid the upstream 1s / 10s delayed-save window. The client journals before each HTTP write.
     manager._skipAnnotationSavingDebounce = true;
+    const initialTheme = globalThis.document?.documentElement?.dataset?.theme;
+    if (initialTheme === "dark") this.reader.setColorScheme("dark");
     // This pinned upstream revision does not resolve Reader.initializedPromise.
     // Its primary PDF view provides the actual readiness contract.
     let timeout;
@@ -181,24 +184,38 @@ export class ZoteroReaderAdapter {
     const view = primary ? "primary" : "secondary";
     this.lastViewState ??= {};
     this.lastViewState[view] = state;
-    const task = (this.stateWriteTail || Promise.resolve())
-      .then(() =>
-        this.closing
-          ? undefined
-          : api(
+    this.pendingViewStates.set(view, state);
+    if (!this.viewStateDrain) {
+      const drain = (async () => {
+        while (!this.closing && this.pendingViewStates.size) {
+          const [nextView, nextState] = this.pendingViewStates.entries().next().value;
+          this.pendingViewStates.delete(nextView);
+          try {
+            await api(
               `/api/state/${this.document.attachment.id}`,
-              { view, state },
+              { view: nextView, state: nextState },
               { timeoutMs: 5000 },
-            ),
-      )
-      .catch((error) => {
-        this.stateError = error;
-        this.onStatus("failed", "阅读位置未保存：" + error.message);
-      })
-      .finally(() => this.stateWrites.delete(task));
-    this.stateWrites.add(task);
-    this.stateWriteTail = task;
-    return task;
+            );
+            this.stateError = null;
+          } catch (error) {
+            if (!this.closing) {
+              this.stateError = error;
+              this.onStatus("failed", "阅读位置未保存：" + error.message);
+            }
+          }
+        }
+      })().finally(() => {
+        this.stateWrites.delete(drain);
+        if (this.viewStateDrain === drain) this.viewStateDrain = null;
+        if (!this.closing && this.pendingViewStates.size) {
+          const [viewKey, latest] = this.pendingViewStates.entries().next().value;
+          this.saveViewState(latest, viewKey === "primary");
+        }
+      });
+      this.stateWrites.add(drain);
+      this.viewStateDrain = drain;
+    }
+    return this.viewStateDrain;
   }
   locationState(location) {
     const viewer = this.pdfApplication.pdfViewer;
@@ -226,6 +243,7 @@ export class ZoteroReaderAdapter {
       manager?._unsavedAnnotations.size ||
       manager?._savingInProgress ||
       this.persistence?.queue.length ||
+      this.pendingViewStates.size ||
       this.stateWrites.size,
     );
   }
@@ -273,6 +291,7 @@ export class ZoteroReaderAdapter {
   discardAndClose() {
     this.persistence.discard();
     this.closing = true;
+    this.pendingViewStates.clear();
     this.stateError = null;
     this.pdfApplication?.eventBus.off("updateviewarea", this.viewAreaListener);
     clearInterval(this.timer);
@@ -295,7 +314,8 @@ export class ZoteroReaderAdapter {
     const pdfWindow = view?._iframeWindow;
     const activePage = (pdfWindow?.PDFViewerApplication?.pdfViewer?.currentPageNumber ?? (this.currentPage() + 1)) - 1;
     const selection = pdfWindow?.getSelection();
-    const anchor = selection?.anchorNode?.parentElement;
+    const node = selection?.anchorNode;
+    const anchor = node?.nodeType === 1 ? node : node?.parentElement;
     const text = anchor?.closest(".textLayer")
       ? selection.toString().trim().slice(0, 12000)
       : "";

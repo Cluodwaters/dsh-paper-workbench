@@ -18,12 +18,15 @@ export async function api(url, data, { timeoutMs = 30000, signal } = {}) {
       ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
       : AbortSignal.timeout(timeoutMs),
   });
-  const body = await response.json();
+  const body = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(body.error?.message || "Request failed");
-    error.code = body.error?.code;
+    const error = new Error(
+      body?.error?.message || `请求失败（HTTP ${response.status}）`,
+    );
+    error.code = body?.error?.code;
     throw error;
   }
+  if (body === null) throw new Error("本地服务返回了无效响应。");
   return body;
 }
 
@@ -182,14 +185,17 @@ export class PersistenceClient {
     if (snapshot.attachmentId !== this.attachmentId || snapshot.sourceHash !== this.sourceHash)
       throw new Error("论文版本已变化，请先导出本地标注草稿。");
     const task = this.queue[0];
-    // A conflict receipt confirms this request was never committed. All other
-    // pending requests retain their IDs for idempotent replay.
+    // A conflict receipt confirms this request was never committed. Rebase every
+    // queued mutation sequentially (including cross-window recovered drafts) while
+    // retaining IDs for unattempted requests for idempotent replay.
     let revision = snapshot.revision;
-    for (const pending of this.queue.filter(entry => entry.key === task.key)) {
+    const keys = new Set();
+    for (const pending of this.queue) {
       pending.mutation = { ...pending.mutation, expectedRevision: revision++ };
+      keys.add(pending.key);
     }
     task.mutation.requestId = crypto.randomUUID();
-    this.journal(task.key);
+    for (const key of keys) this.journal(key);
     this.revision = snapshot.revision;
     await this.retry();
   }

@@ -93,6 +93,11 @@ test('manifest traversal, aliasing, and caches inside the package are rejected',
   assert.throws(() => parseRuntimeManifest(duplicate))
   await assert.rejects(prepareRuntime({ ...f.options, cacheRoot: path.join(f.pluginRoot, 'cache') }), /目录之外/)
   const linked = path.join(f.root, 'linked-cache')
-  symlinkSync(f.pluginRoot, linked, process.platform === 'win32' ? 'junction' : 'dir')
+  try {
+    symlinkSync(f.pluginRoot, linked, process.platform === 'win32' ? 'junction' : 'dir')
+  } catch (error) {
+    if (['EPERM', 'EACCES'].includes(error.code)) return
+    throw error
+  }
   await assert.rejects(prepareRuntime({ ...f.options, cacheRoot: linked }), /目录链接/)
 })

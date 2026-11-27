@@ -16,6 +16,7 @@ test(
     const dataRoot = mkdtempSync(path.join(root, "run-"));
     let handler, agentCreated, agentPreStep, backendPid;
     let connectionReady = true;
+    let connectionMode = "legacy";
     const disposers = [];
     const server = http.createServer((request, response) =>
       handler
@@ -40,11 +41,20 @@ test(
         if(name==='agents')return agentRegistry;
         if(name==='sessions')return {async flush(){}};
         return name === "connection" && connectionReady
-          ? {
-              requestRejection({ headers }) {
-                return headers.cookie === "harness-test=1" ? null : 401;
-              },
-            }
+          ? connectionMode === "admit"
+            ? {
+                admit({ headers }) {
+                  if (headers.cookie === "harness-test=1") return { peer: { id: "peer-1" } };
+                  if (headers.cookie === "harness-forbidden=1") return { rejection: 403 };
+                  if (headers.cookie === "harness-down=1") return { rejection: 503 };
+                  return { rejection: 401 };
+                },
+              }
+            : {
+                requestRejection({ headers }) {
+                  return headers.cookie === "harness-test=1" ? null : 401;
+                },
+              }
           : undefined;
       },
       effect(setup) {
@@ -109,6 +119,18 @@ test(
     connectionReady = false;
     assert.equal((await get("/__workbench/status")).status, 503);
     connectionReady = true;
+    connectionMode = "admit";
+    assert.equal((await get("/__workbench/status")).status, 200);
+    assert.equal((await fetch(origin + "/paper-workbench/__workbench/status")).status, 401);
+    assert.equal(
+      (await fetch(origin + "/paper-workbench/__workbench/status", { headers: { cookie: "harness-forbidden=1" } })).status,
+      403,
+    );
+    assert.equal(
+      (await fetch(origin + "/paper-workbench/__workbench/status", { headers: { cookie: "harness-down=1" } })).status,
+      503,
+    );
+    connectionMode = "legacy";
     assert.equal(
       (await fetch(origin + "/paper-workbench/api/health")).status,
       401,

@@ -451,3 +451,45 @@ test("master runtime exposes catalog tools only and invokes native compaction at
   );
   assert.equal(compactions, 1);
 });
+
+test("migrated paper sessions remain tool-scoped on attach and bindings survive handle disposal", async (t) => {
+  const f = fixture({ role: "paper" });
+  t.after(() => f.coordinator.stop());
+  const migratedTools = [];
+  const migratedRestrictions = [];
+  const migratedAgent = {
+    id: "fixture-session",
+    status: "idle",
+    session: { id: "fixture-session", seq: 1, header: { cwd: "E:/old-data-root/harness-conversations" } },
+    ctx: {
+      get() {},
+      on() {},
+      tools: {
+        restrict: (rule) => migratedRestrictions.push(rule),
+        guard() {},
+        register: (def) => migratedTools.push(def),
+      },
+      systemPrompt: { section() {}, suppressRuntimeContext() {} },
+    },
+  };
+  await f.coordinator.attach(migratedAgent);
+  assert.deepEqual(migratedRestrictions, [{ allow: [] }]);
+  assert.ok(migratedTools.some((tool) => tool.name === "paper_read_pages"));
+  assert.equal(f.coordinator.binding("fixture-session")?.role, "paper");
+  assert.equal((await f.coordinator.resolveBinding("fixture-session"))?.attachment_id, "fixture-paper");
+});
+
+test("delegated research budget error identifies the task kind accurately", async (t) => {
+  let turns = 0;
+  const f = fixture({
+    role: "task",
+    kind: "research",
+    onIdle({ job }) {
+      job.progress.reads = [{ pageIndex: turns++, complete: 1 }];
+    },
+  });
+  t.after(() => f.coordinator.stop());
+  f.coordinator.start();
+  await until(() => f.job.state === "failed");
+  assert.match(f.actions.find((a) => a.action === "stop").body.error, /委派任务/);
+});
